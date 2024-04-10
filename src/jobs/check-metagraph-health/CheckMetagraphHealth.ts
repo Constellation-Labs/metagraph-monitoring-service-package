@@ -1,10 +1,10 @@
-import IGlobalNetworkService from '@interfaces/IGlobalNetworkService';
-import IMetagraphService from '@interfaces/IMetagraphService';
-import ISeedlistService from '@interfaces/ISeedlistService';
-import ISshService from '@interfaces/ISshService';
-import ForceMetagraphRestart from '@jobs/check-metagraph-health/restart/conditions/ForceMetagraphRestart';
-import SnapshotsStopped from '@jobs/check-metagraph-health/restart/conditions/SnapshotsStopped';
-import UnhealthyNodes from '@jobs/check-metagraph-health/restart/conditions/UnhealthyNodes';
+import config from '@config/config.json';
+import IRestartCondition from '@interfaces/restart-conditions/IRestartCondition';
+import IGlobalNetworkService from '@interfaces/services/IGlobalNetworkService';
+import IMetagraphService from '@interfaces/services/IMetagraphService';
+import ISeedlistService from '@interfaces/services/ISeedlistService';
+import ISshService from '@interfaces/services/ISshService';
+import conditions from '@jobs/check-metagraph-health/restart/conditions';
 import getLogsNames from '@utils/get-logs-names';
 
 export default class CheckMetagraphHealth {
@@ -23,59 +23,39 @@ export default class CheckMetagraphHealth {
     this.globalNetworkService = globalNetworkService;
     this.seedlistService = seedlistService;
   }
+  async checkAndTriggerRestart() {}
   async execute() {
-    try {
-      console.log(`Starting the restart script`);
+    console.log(`Starting the restart script`);
 
-      const referenceSourceNode =
-        await this.globalNetworkService.getReferenceSourceNode();
-      if (!referenceSourceNode) {
-        throw Error('Could not get the reference source node');
+    const referenceSourceNode =
+      await this.globalNetworkService.getReferenceSourceNode();
+    if (!referenceSourceNode) {
+      throw Error('Could not get the reference source node');
+    }
+
+    console.log(`Getting possible metagraph restart type`);
+    const logsNames = getLogsNames();
+    for (const restartCondition of config.metagraph.restart_conditions) {
+      try {
+        const RestartCondition = conditions[restartCondition];
+        const iRestartCondition: IRestartCondition = new RestartCondition(
+          this.sshServices,
+          this.metagraphService,
+          this.seedlistService,
+          referenceSourceNode,
+          logsNames,
+        );
+
+        if (await iRestartCondition.shouldRestart()) {
+          await iRestartCondition.triggerRestart();
+          return;
+        }
+      } catch (e) {
+        console.log(
+          `Could not get restart condition: ${restartCondition}, skipping`,
+        );
+        continue;
       }
-
-      console.log(`Getting possible metagraph restart type`);
-      const logsNames = getLogsNames();
-
-      const forceMetagraphRestart = await new ForceMetagraphRestart(
-        this.sshServices,
-        this.metagraphService,
-        this.seedlistService,
-        referenceSourceNode,
-        logsNames,
-      );
-
-      if (await forceMetagraphRestart.shouldRestartMetagraph()) {
-        await forceMetagraphRestart.triggerRestart();
-        return;
-      }
-
-      const snapshotsStopped = await new SnapshotsStopped(
-        this.sshServices,
-        this.metagraphService,
-        this.seedlistService,
-        referenceSourceNode,
-        logsNames,
-      );
-
-      if (await snapshotsStopped.shouldRestartMetagraph()) {
-        await snapshotsStopped.triggerRestart();
-        return;
-      }
-
-      const unhealthyNodes = await new UnhealthyNodes(
-        this.sshServices,
-        this.metagraphService,
-        this.seedlistService,
-        referenceSourceNode,
-        logsNames,
-      );
-
-      if (await unhealthyNodes.shouldRestartMetagraph()) {
-        await unhealthyNodes.triggerRestart();
-        return;
-      }
-    } catch (e) {
-      console.log('Error');
     }
   }
 }

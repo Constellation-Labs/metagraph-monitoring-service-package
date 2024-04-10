@@ -1,18 +1,20 @@
 import config from '@config/config.json';
-import { NetworkNode } from '@interfaces/IGlobalNetworkService';
-import IMetagraphService from '@interfaces/IMetagraphService';
-import ISeedlistService from '@interfaces/ISeedlistService';
-import ISshService from '@interfaces/ISshService';
+import IRestartCondition from '@interfaces/restart-conditions/IRestartCondition';
+import { NetworkNode } from '@interfaces/services/IGlobalNetworkService';
+import IMetagraphService from '@interfaces/services/IMetagraphService';
+import ISeedlistService from '@interfaces/services/ISeedlistService';
+import ISshService from '@interfaces/services/ISshService';
 import { LogsNames } from '@utils/get-logs-names';
 
 import { FullMetagraph } from '../types/FullMetagraph';
 
-export default class ForceMetagraphRestart {
-  private sshServices: ISshService[];
-  private metagraphService: IMetagraphService;
-  private seedlistService: ISeedlistService;
-  private referenceSourceNode: NetworkNode;
-  private logsNames: LogsNames;
+export default class ForceMetagraphRestart implements IRestartCondition {
+  sshServices: ISshService[];
+  metagraphService: IMetagraphService;
+  seedlistService: ISeedlistService;
+  referenceSourceNode: NetworkNode;
+  logsNames: LogsNames;
+
   constructor(
     sshServices: ISshService[],
     metagraphService: IMetagraphService,
@@ -26,7 +28,8 @@ export default class ForceMetagraphRestart {
     this.referenceSourceNode = referenceSourceNode;
     this.logsNames = logsNames;
   }
-  async shouldRestartMetagraph(): Promise<boolean> {
+
+  async shouldRestart(): Promise<boolean> {
     return new Promise((resolve) => resolve(config.force_metagraph_restart));
   }
 

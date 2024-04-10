@@ -1,8 +1,8 @@
 import config from '@config/config.json';
-import { NetworkNode } from '@interfaces/IGlobalNetworkService';
-import IMetagraphService from '@interfaces/IMetagraphService';
-import ISeedlistService from '@interfaces/ISeedlistService';
-import ISshService from '@interfaces/ISshService';
+import { NetworkNode } from '@interfaces/services/IGlobalNetworkService';
+import IMetagraphService from '@interfaces/services/IMetagraphService';
+import ISeedlistService from '@interfaces/services/ISeedlistService';
+import ISshService from '@interfaces/services/ISshService';
 import { Layers } from '@shared/constants';
 import { LogsNames } from '@utils/get-logs-names';
 

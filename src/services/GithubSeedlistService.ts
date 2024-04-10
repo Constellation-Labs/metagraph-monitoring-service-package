@@ -1,5 +1,7 @@
 import config from '@config/config.json';
-import ISeedlistService, { SeedListInfo } from '@interfaces/ISeedlistService';
+import ISeedlistService, {
+  SeedListInfo,
+} from '@interfaces/services/ISeedlistService';
 import { Layers } from '@shared/constants';
 
 export default class GithubSeedlistService implements ISeedlistService {

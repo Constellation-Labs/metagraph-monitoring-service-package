@@ -4,8 +4,8 @@ import path from 'path';
 import { Client } from 'ssh2';
 
 import 'module-alias';
-import { MetagraphNode } from '@interfaces/IMetagraphService';
-import ISshService from '@interfaces/ISshService';
+import { MetagraphNode } from '@interfaces/services/IMetagraphService';
+import ISshService from '@interfaces/services/ISshService';
 
 export class Ssh2Service implements ISshService {
   private ip: string;

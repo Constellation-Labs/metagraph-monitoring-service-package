@@ -1,19 +1,21 @@
-import { NetworkNode } from '@interfaces/IGlobalNetworkService';
-import IMetagraphService from '@interfaces/IMetagraphService';
-import ISeedlistService from '@interfaces/ISeedlistService';
-import ISshService from '@interfaces/ISshService';
+import IRestartCondition from '@interfaces/restart-conditions/IRestartCondition';
+import { NetworkNode } from '@interfaces/services/IGlobalNetworkService';
+import IMetagraphService from '@interfaces/services/IMetagraphService';
+import ISeedlistService from '@interfaces/services/ISeedlistService';
+import ISshService from '@interfaces/services/ISshService';
 import { LogsNames } from '@utils/get-logs-names';
 import config from 'config/config.json';
 
 import { FullLayer } from '../types/FullLayer';
 import { IndividualNode } from '../types/IndividualNode';
 
-export default class UnhealthyNodes {
-  private metagraphService: IMetagraphService;
-  private sshServices: ISshService[];
-  private seedlistService: ISeedlistService;
-  private referenceSourceNode: NetworkNode;
-  private logsNames: LogsNames;
+export default class UnhealthyNodes implements IRestartCondition {
+  metagraphService: IMetagraphService;
+  sshServices: ISshService[];
+  seedlistService: ISeedlistService;
+  referenceSourceNode: NetworkNode;
+  logsNames: LogsNames;
+
   private layerRestarted: boolean = false;
 
   private metagraphL0UnhealthyNodes: ISshService[] = [];
@@ -157,7 +159,7 @@ export default class UnhealthyNodes {
     }
   }
 
-  async shouldRestartMetagraph(): Promise<boolean> {
+  async shouldRestart(): Promise<boolean> {
     console.log(`Checking if nodes are unhealthy`);
     for (const sshService of this.sshServices) {
       const { metagraphNode } = sshService;

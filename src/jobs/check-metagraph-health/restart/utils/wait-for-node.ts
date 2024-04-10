@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 import config from '@config/config.json';
-import { MetagraphNode } from '@interfaces/IMetagraphService';
+import { MetagraphNode } from '@interfaces/services/IMetagraphService';
 import { Layers } from '@shared/constants';
 
 import sleep from './sleep';

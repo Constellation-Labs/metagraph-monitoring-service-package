@@ -5,7 +5,7 @@ import IMetagraphService, {
   MetagraphNode,
   MetagraphNodeInfo,
   MetagraphSnapshotInfo,
-} from '@interfaces/IMetagraphService';
+} from '@interfaces/services/IMetagraphService';
 
 export default class ConstellationMetagraphService
   implements IMetagraphService

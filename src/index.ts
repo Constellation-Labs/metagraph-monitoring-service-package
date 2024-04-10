@@ -1,5 +1,5 @@
 import config from '@config/config.json';
-import ISshService from '@interfaces/ISshService';
+import ISshService from '@interfaces/services/ISshService';
 import CheckMetagraphHealth from '@jobs/check-metagraph-health/CheckMetagraphHealth';
 import ConstellationGlobalNetworkService from '@services/ConstellationGlobalNetworkService';
 import ConstellationMetagraphService from '@services/ConstellationMetagraphService';
@@ -50,4 +50,5 @@ const checkMetagraphHealth = async () => {
   }
   return;
 };
+
 checkMetagraphHealth();
