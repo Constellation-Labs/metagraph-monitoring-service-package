@@ -3,6 +3,11 @@
     "id": "DAG5kfY9GoHF1CYaY8tuRJxmB3JSzAEARJEAkA2C",
     "name": "DOR",
     "version": "v1.3.0",
+    "restart_conditions": [
+      "ForceMetagraphRestart",
+      "SnapshotsStopped",
+      "UnhealthyNodes"
+    ],
     "layers": {
       "ml0": {
         "ports": {
@@ -11,7 +16,7 @@
           "cli": 7002
         },
         "additional_env_variables": [
-          "METAGRAPH_L0_NODE_URL=http://54.218.46.24:7000/cluster/info", 
+          "METAGRAPH_L0_NODE_URL=http://54.218.46.24:7000/cluster/info",
           "DATA_L1_NODE_URL=http://54.218.46.24:9000/cluster/info"
         ],
         "seedlist": {
@@ -46,15 +51,15 @@
         }
       }
     },
-    "nodes":[
+    "nodes": [
       {
         "ip": "54.218.46.24",
         "username": "ubuntu",
         "privateKeyPath": "config/dor-metagraph.pem",
         "key_file": {
-          "name": "key",
+          "name": "name",
           "alias": "alias",
-          "password": "pass"
+          "password": "password"
         }
       },
       {
@@ -62,9 +67,9 @@
         "username": "ubuntu",
         "privateKeyPath": "config/dor-metagraph.pem",
         "key_file": {
-          "name": "key",
+          "name": "name",
           "alias": "alias",
-          "password": "pass"
+          "password": "password"
         }
       },
       {
@@ -72,9 +77,9 @@
         "username": "ubuntu",
         "privateKeyPath": "config/dor-metagraph.pem",
         "key_file": {
-          "name": "key",
+          "name": "name",
           "alias": "alias",
-          "password": "pass"
+          "password": "password"
         }
       }
     ]
