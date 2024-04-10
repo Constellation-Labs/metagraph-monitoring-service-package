@@ -1,4 +1,4 @@
-import { MetagraphNode } from '@interfaces/metagraph/types';
+import { MetagraphNode } from './IMetagraphService';
 
 export default interface ISshService {
   connection: unknown;

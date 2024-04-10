@@ -1,12 +1,11 @@
 import axios from 'axios';
 
 import config from '@config/config.json';
-import IMetagraphService from '@interfaces/metagraph/IMetagraphService';
-import {
+import IMetagraphService, {
   MetagraphNode,
   MetagraphNodeInfo,
   MetagraphSnapshotInfo,
-} from '@interfaces/metagraph/types';
+} from '@interfaces/IMetagraphService';
 
 export default class ConstellationMetagraphService
   implements IMetagraphService

@@ -1,9 +1,9 @@
 import config from '@config/config.json';
-import ISshService from '@interfaces/ssh/ISshService';
-import ConstellationGlobalNetworkService from '@services/global-network/ConstellationGlobalNetworkService';
-import ConstellationMetagraphService from '@services/metagraph/ConstellationMetagraphService';
-import GithubSeedlistService from '@services/seedlist/GithubSeedlistService';
-import { Ssh2Service } from '@services/ssh/Ssh2Service';
+import ISshService from '@interfaces/ISshService';
+import ConstellationGlobalNetworkService from '@services/ConstellationGlobalNetworkService';
+import ConstellationMetagraphService from '@services/ConstellationMetagraphService';
+import GithubSeedlistService from '@services/GithubSeedlistService';
+import { Ssh2Service } from '@services/Ssh2Service';
 
 import CheckMetagraphHealth from './CheckMetagraphHealth';
 

@@ -4,8 +4,8 @@ import path from 'path';
 import { Client } from 'ssh2';
 
 import 'module-alias';
-import { MetagraphNode } from '@interfaces/metagraph/types';
-import ISshService from '@interfaces/ssh/ISshService';
+import { MetagraphNode } from '@interfaces/IMetagraphService';
+import ISshService from '@interfaces/ISshService';
 
 export class Ssh2Service implements ISshService {
   private ip: string;
@@ -27,7 +27,6 @@ export class Ssh2Service implements ISshService {
     this.username = metagraphNode.username;
     const myFilePath = path.join(
       __dirname,
-      '..',
       '..',
       '..',
       metagraphNode.privateKeyPath,

@@ -1,9 +1,9 @@
 import { utc } from 'moment';
 
-import { NetworkNode } from '@interfaces/global-network/types';
-import IMetagraphService from '@interfaces/metagraph/IMetagraphService';
-import ISeedlistService from '@interfaces/seedlist/ISeedlistService';
-import ISshService from '@interfaces/ssh/ISshService';
+import { NetworkNode } from '@interfaces/IGlobalNetworkService';
+import IMetagraphService from '@interfaces/IMetagraphService';
+import ISeedlistService from '@interfaces/ISeedlistService';
+import ISshService from '@interfaces/ISshService';
 import { LogsNames } from '@utils/get-logs-names';
 
 import { FullMetagraph } from '../types/FullMetagraph';

@@ -3,7 +3,7 @@ import axios from 'axios';
 import {
   GlobalSnapshotInfo,
   NetworkNode,
-} from '@interfaces/global-network/types';
+} from '@interfaces/IGlobalNetworkService';
 
 export default class ConstellationGlobalNetworkService {
   name: string;

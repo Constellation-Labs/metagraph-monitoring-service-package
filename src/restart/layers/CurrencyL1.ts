@@ -1,9 +1,10 @@
 import config from '@config/config.json';
-import { NetworkNode } from '@interfaces/global-network/types';
-import IMetagraphService from '@interfaces/metagraph/IMetagraphService';
-import { MetagraphNode } from '@interfaces/metagraph/types';
-import ISeedlistService from '@interfaces/seedlist/ISeedlistService';
-import ISshService from '@interfaces/ssh/ISshService';
+import { NetworkNode } from '@interfaces/IGlobalNetworkService';
+import IMetagraphService, {
+  MetagraphNode,
+} from '@interfaces/IMetagraphService';
+import ISeedlistService from '@interfaces/ISeedlistService';
+import ISshService from '@interfaces/ISshService';
 
 import waitForNode from '../utils/wait-for-node';
 

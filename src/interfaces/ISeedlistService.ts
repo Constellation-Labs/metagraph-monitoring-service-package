@@ -1,6 +1,9 @@
 import { Layers } from '@shared/constants';
 
-import { SeedListInfo } from './types';
+export type SeedListInfo = {
+  fileName: string;
+  url: string;
+};
 
 export default interface ISeedlistService {
   buildSeedlistInformation(layer: Layers): SeedListInfo;

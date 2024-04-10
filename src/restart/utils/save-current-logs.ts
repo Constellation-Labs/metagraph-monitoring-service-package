@@ -1,4 +1,4 @@
-import ISshService from '@interfaces/ssh/ISshService';
+import ISshService from '@interfaces/ISshService';
 import { Layers } from '@shared/constants';
 import { LogsNames } from '@utils/get-logs-names';
 

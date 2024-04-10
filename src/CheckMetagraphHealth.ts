@@ -1,7 +1,7 @@
-import IGlobalNetworkService from '@interfaces/global-network/IGlobalNetworkService';
-import IMetagraphService from '@interfaces/metagraph/IMetagraphService';
-import ISeedlistService from '@interfaces/seedlist/ISeedlistService';
-import ISshService from '@interfaces/ssh/ISshService';
+import IGlobalNetworkService from '@interfaces/IGlobalNetworkService';
+import IMetagraphService from '@interfaces/IMetagraphService';
+import ISeedlistService from '@interfaces/ISeedlistService';
+import ISshService from '@interfaces/ISshService';
 import getLogsNames from '@utils/get-logs-names';
 
 import ForceMetagraphRestart from './restart/conditions/ForceMetagraphRestart';
