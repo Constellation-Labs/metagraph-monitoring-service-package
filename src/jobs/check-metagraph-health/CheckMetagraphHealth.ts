@@ -2,11 +2,10 @@ import IGlobalNetworkService from '@interfaces/IGlobalNetworkService';
 import IMetagraphService from '@interfaces/IMetagraphService';
 import ISeedlistService from '@interfaces/ISeedlistService';
 import ISshService from '@interfaces/ISshService';
+import ForceMetagraphRestart from '@jobs/check-metagraph-health/restart/conditions/ForceMetagraphRestart';
+import SnapshotsStopped from '@jobs/check-metagraph-health/restart/conditions/SnapshotsStopped';
+import UnhealthyNodes from '@jobs/check-metagraph-health/restart/conditions/UnhealthyNodes';
 import getLogsNames from '@utils/get-logs-names';
-
-import ForceMetagraphRestart from './restart/conditions/ForceMetagraphRestart';
-import SnapshotsStopped from './restart/conditions/SnapshotsStopped';
-import UnhealthyNodes from './restart/conditions/UnhealthyNodes';
 
 export default class CheckMetagraphHealth {
   private sshServices: ISshService[];

@@ -11,6 +11,7 @@
     "paths": {
       "@services/*": ["src/services/*"],
       "@interfaces/*": ["src/interfaces/*"],
+      "@jobs/*": ["src/jobs/*"],
       "@utils/*": ["src/utils/*"],
       "@shared/*": ["src/shared/*"],
       "@config/*": ["config/*"]

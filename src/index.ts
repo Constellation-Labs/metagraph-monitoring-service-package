@@ -1,11 +1,10 @@
 import config from '@config/config.json';
 import ISshService from '@interfaces/ISshService';
+import CheckMetagraphHealth from '@jobs/check-metagraph-health/CheckMetagraphHealth';
 import ConstellationGlobalNetworkService from '@services/ConstellationGlobalNetworkService';
 import ConstellationMetagraphService from '@services/ConstellationMetagraphService';
 import GithubSeedlistService from '@services/GithubSeedlistService';
 import { Ssh2Service } from '@services/Ssh2Service';
-
-import CheckMetagraphHealth from './CheckMetagraphHealth';
 
 const intializeSshConnections = async (): Promise<ISshService[]> => {
   const { nodes: metagraphNodes } = config.metagraph;
