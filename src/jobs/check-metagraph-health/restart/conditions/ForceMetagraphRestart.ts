@@ -1,4 +1,3 @@
-import config from '@config/config.json';
 import IRestartCondition from '@interfaces/restart-conditions/IRestartCondition';
 import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
@@ -30,7 +29,7 @@ export default class ForceMetagraphRestart implements IRestartCondition {
   }
 
   async shouldRestart(): Promise<boolean> {
-    return new Promise((resolve) => resolve(config.force_metagraph_restart));
+    return new Promise((resolve) => resolve(false));
   }
 
   async triggerRestart(): Promise<void> {

@@ -4,7 +4,6 @@
     "name": "",
     "version": "v1.0.0",
     "restart_conditions": [
-      "ForceMetagraphRestart",
       "SnapshotsStopped",
       "UnhealthyNodes"
     ],
