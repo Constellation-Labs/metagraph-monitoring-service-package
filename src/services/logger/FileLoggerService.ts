@@ -1,4 +1,5 @@
-import { createLogger, format, transports } from 'winston';
+import { createLogger, format } from 'winston';
+import DailyRotateFile from 'winston-daily-rotate-file';
 
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 
@@ -9,10 +10,21 @@ export class FileLoggerService implements ILoggerService {
     this.logger = createLogger({
       format: format.combine(format.timestamp(), format.json()),
       transports: [
-        new transports.File({ filename: 'logs/combined.log' }),
-        new transports.File({
-          filename: 'logs/errors.log',
+        new DailyRotateFile({
+          filename: 'logs/application-%DATE%.log',
+          datePattern: 'YYYY-MM-DD',
+          zippedArchive: true,
+          maxSize: '20m',
+          maxFiles: '14d',
+        }),
+
+        new DailyRotateFile({
+          filename: 'logs/errors-%DATE%.log',
+          datePattern: 'YYYY-MM-DD',
           level: 'error',
+          zippedArchive: true,
+          maxSize: '20m',
+          maxFiles: '30d',
         }),
       ],
     });

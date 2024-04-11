@@ -8,7 +8,16 @@ export class ConsoleLoggerService implements ILoggerService {
   constructor() {
     this.logger = createLogger({
       format: format.combine(format.timestamp(), format.json()),
-      transports: [new transports.Console()],
+      transports: [
+        new transports.Console({
+          format: format.combine(
+            format.colorize(),
+            format.printf(
+              (info) => `${info.timestamp} ${info.level}: ${info.message}`,
+            ),
+          ),
+        }),
+      ],
     });
   }
 
