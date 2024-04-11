@@ -1,12 +1,12 @@
 import config from '@config/config.json';
-import { NetworkNode } from '@interfaces/services/IGlobalNetworkService';
+import { NetworkNode } from '@interfaces/services/global-network/IGlobalNetworkService';
+import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService, {
   MetagraphNode,
-} from '@interfaces/services/IMetagraphService';
-import ISeedlistService from '@interfaces/services/ISeedlistService';
-import ISshService from '@interfaces/services/ISshService';
+} from '@interfaces/services/metagraph/IMetagraphService';
+import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
+import ISshService from '@interfaces/services/ssh/ISshService';
 import { Layers } from '@shared/constants';
-import { LogsNames } from '@utils/get-logs-names';
 
 import { CurrencyL1 } from '../layers/CurrencyL1';
 import { DataL1 } from '../layers/DataL1';
@@ -19,38 +19,59 @@ export class IndividualNode {
   private sshService: ISshService;
   private metagraphService: IMetagraphService;
   private seedlistService: ISeedlistService;
+  private logger: ILoggerService;
 
-  private referenceMetagraphNode: MetagraphNode;
-  private referenceSourceNode: NetworkNode;
-  private layer: Layers;
-  private logsNames: LogsNames;
+  referenceMetagraphNode: MetagraphNode;
+  referenceSourceNode: NetworkNode;
+  layer: Layers;
+
   constructor(
     sshService: ISshService,
     metagraphService: IMetagraphService,
     seedlistService: ISeedlistService,
+    logger: ILoggerService,
     referenceMetagraphNode: MetagraphNode,
     referenceSourceNode: NetworkNode,
     layer: Layers,
-    logsNames: LogsNames,
   ) {
     this.sshService = sshService;
     this.metagraphService = metagraphService;
     this.seedlistService = seedlistService;
+    this.logger = logger;
     this.referenceMetagraphNode = referenceMetagraphNode;
     this.referenceSourceNode = referenceSourceNode;
     this.layer = layer;
-    this.logsNames = logsNames;
+  }
+
+  private customLogger(message: string) {
+    this.logger.info(`[IndividualNode] ${message}`);
   }
 
   private async killProcess() {
+    this.customLogger(
+      `Killing ${this.layer} current processes in node ${this.sshService.metagraphNode.ip}`,
+    );
+
     await killCurrentExecution(
       this.sshService,
       config.metagraph.layers[this.layer].ports.public,
     );
+
+    this.customLogger(
+      `Finished killing processes in node ${this.sshService.metagraphNode.ip}`,
+    );
   }
 
   private async moveLog() {
-    await saveCurrentLogs(this.sshService, this.layer, this.logsNames);
+    this.customLogger(
+      `Saving current logs of ${this.layer} in node ${this.sshService.metagraphNode.ip}`,
+    );
+
+    await saveCurrentLogs(this.sshService, this.layer);
+
+    this.customLogger(
+      `Finished saving current logs in node ${this.sshService.metagraphNode.ip}`,
+    );
   }
 
   async performRestart() {
@@ -62,11 +83,16 @@ export class IndividualNode {
         this.sshService,
         this.metagraphService,
         this.seedlistService,
+        this.logger,
         this.referenceSourceNode,
-        this.logsNames.ml0LogName,
       );
       await metagraphL0.startValidatorNodeL0();
-      await waitForNode(metagraphL0.metagraphNode, this.layer, 'ReadyToJoin');
+      await waitForNode(
+        metagraphL0.currentNode,
+        this.layer,
+        'ReadyToJoin',
+        this.logger,
+      );
       await metagraphL0.joinNodeToCluster(this.referenceMetagraphNode);
       return;
     }
@@ -76,12 +102,17 @@ export class IndividualNode {
         this.sshService,
         this.metagraphService,
         this.seedlistService,
+        this.logger,
         this.referenceMetagraphNode,
         this.referenceSourceNode,
-        this.logsNames.ml0LogName,
       );
       await currencyL1.startValidatorNodeCl1();
-      await waitForNode(currencyL1.metagraphNode, this.layer, 'ReadyToJoin');
+      await waitForNode(
+        currencyL1.currentNode,
+        this.layer,
+        'ReadyToJoin',
+        this.logger,
+      );
       await currencyL1.joinNodeToCluster(this.referenceMetagraphNode);
       return;
     }
@@ -91,12 +122,17 @@ export class IndividualNode {
         this.sshService,
         this.metagraphService,
         this.seedlistService,
+        this.logger,
         this.referenceMetagraphNode,
         this.referenceSourceNode,
-        this.logsNames.ml0LogName,
       );
       await dataL1.startValidatorNodeDl1();
-      await waitForNode(dataL1.metagraphNode, this.layer, 'ReadyToJoin');
+      await waitForNode(
+        dataL1.currentNode,
+        this.layer,
+        'ReadyToJoin',
+        this.logger,
+      );
       await dataL1.joinNodeToCluster(this.referenceMetagraphNode);
       return;
     }

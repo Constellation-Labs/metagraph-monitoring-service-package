@@ -1,38 +1,41 @@
 import config from '@config/config.json';
-import { NetworkNode } from '@interfaces/services/IGlobalNetworkService';
+import { NetworkNode } from '@interfaces/services/global-network/IGlobalNetworkService';
+import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService, {
   MetagraphNode,
-} from '@interfaces/services/IMetagraphService';
-import ISeedlistService from '@interfaces/services/ISeedlistService';
-import ISshService from '@interfaces/services/ISshService';
+} from '@interfaces/services/metagraph/IMetagraphService';
+import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
+import ISshService from '@interfaces/services/ssh/ISshService';
 
 import waitForNode from '../utils/wait-for-node';
 
 export class MetagraphL0 {
-  public sshService: ISshService;
-  public metagraphService: IMetagraphService;
-  public seedlistService: ISeedlistService;
-  public metagraphNode: MetagraphNode;
-  public referenceSourceNode: NetworkNode;
-  public logName: string;
+  sshService: ISshService;
+  metagraphService: IMetagraphService;
+  seedlistService: ISeedlistService;
+  logger: ILoggerService;
+
+  currentNode: MetagraphNode;
+  referenceSourceNode: NetworkNode;
 
   constructor(
     sshService: ISshService,
     metagraphService: IMetagraphService,
     seedlistService: ISeedlistService,
+    logger: ILoggerService,
     referenceSourceNode: NetworkNode,
-    logName: string,
   ) {
     this.sshService = sshService;
     this.metagraphService = metagraphService;
-    this.metagraphNode = sshService.metagraphNode;
-    this.referenceSourceNode = referenceSourceNode;
-    this.logName = logName;
     this.seedlistService = seedlistService;
+    this.logger = logger;
+
+    this.currentNode = sshService.metagraphNode;
+    this.referenceSourceNode = referenceSourceNode;
   }
 
-  private log(message: string) {
-    console.log(`[ml0] ${message}`);
+  private async customLogger(message: string) {
+    this.logger.info(`[Metagraph L0] ${message}`);
   }
 
   private buildNodeEnvVariables() {
@@ -40,7 +43,7 @@ export class MetagraphL0 {
       name: keyStore,
       alias: keyAlias,
       password,
-    } = this.metagraphNode.key_file;
+    } = this.currentNode.key_file;
     const {
       public: publicPort,
       p2p: p2pPort,
@@ -80,12 +83,17 @@ export class MetagraphL0 {
       validatorHost,
       this.metagraphService,
       this.seedlistService,
+      this.logger,
       this.referenceSourceNode,
-      this.logName,
     );
     await validatorMl0.startValidatorNodeL0();
-    await waitForNode(validatorMl0.metagraphNode, 'ml0', 'ReadyToJoin');
-    await validatorMl0.joinNodeToCluster(this.metagraphNode);
+    await waitForNode(
+      validatorMl0.currentNode,
+      'ml0',
+      'ReadyToJoin',
+      this.logger,
+    );
+    await validatorMl0.joinNodeToCluster(this.currentNode);
   }
 
   private async updateSeedlist(
@@ -93,11 +101,11 @@ export class MetagraphL0 {
     seedlistFileName?: string,
   ) {
     if (!seedlistUrl) {
-      this.log('Node does not have seedlist set');
+      this.customLogger('Node does not have seedlist set');
       return;
     }
 
-    this.log(`Updating seedlist on node`);
+    this.customLogger(`Updating seedlist on node`);
     const command = `
     cd metagraph
     wget -O ${seedlistFileName} ${seedlistUrl}
@@ -107,7 +115,8 @@ export class MetagraphL0 {
   }
 
   async startRollbackNodeL0() {
-    this.log(`Starting node ${this.metagraphNode.ip} as rollback`);
+    this.customLogger(`Starting node ${this.currentNode.ip} as rollback`);
+
     const { url, fileName } =
       await this.seedlistService.buildSeedlistInformation('ml0');
 
@@ -118,17 +127,19 @@ export class MetagraphL0 {
     const parsedCommand = ` ${command} 
     ${
       url
-        ? `nohup java -jar metagraph-l0.jar run-rollback --ip ${this.metagraphNode.ip} --seedlist ${fileName} > metagraph-l0-startup.log 2>&1 &`
-        : `nohup java -jar metagraph-l0.jar run-rollback --ip ${this.metagraphNode.ip} > metagraph-l0-startup.log 2>&1 &`
+        ? `nohup java -jar metagraph-l0.jar run-rollback --ip ${this.currentNode.ip} --seedlist ${fileName} > metagraph-l0-startup.log 2>&1 &`
+        : `nohup java -jar metagraph-l0.jar run-rollback --ip ${this.currentNode.ip} > metagraph-l0-startup.log 2>&1 &`
     }
     `;
 
     await this.sshService.executeCommand(parsedCommand);
-    this.log(`Finished ${this.metagraphNode.ip} node as rollback`);
+
+    this.customLogger(`Finished ${this.currentNode.ip} node as rollback`);
   }
 
   async startValidatorNodeL0() {
-    this.log(`Starting node ${this.metagraphNode.ip} as validator`);
+    this.customLogger(`Starting node ${this.currentNode.ip} as validator`);
+
     const { url, fileName } =
       await this.seedlistService.buildSeedlistInformation('ml0');
 
@@ -139,19 +150,21 @@ export class MetagraphL0 {
     const parsedCommand = ` ${command} 
     ${
       url
-        ? `nohup java -jar metagraph-l0.jar run-validator --ip ${this.metagraphNode.ip} --seedlist ${fileName} > metagraph-l0-startup.log 2>&1 &`
-        : `nohup java -jar metagraph-l0.jar run-validator --ip ${this.metagraphNode.ip} > metagraph-l0-startup.log 2>&1 &`
+        ? `nohup java -jar metagraph-l0.jar run-validator --ip ${this.currentNode.ip} --seedlist ${fileName} > metagraph-l0-startup.log 2>&1 &`
+        : `nohup java -jar metagraph-l0.jar run-validator --ip ${this.currentNode.ip} > metagraph-l0-startup.log 2>&1 &`
     }
     `;
 
     await this.sshService.executeCommand(parsedCommand);
-    this.log(`Finished ${this.metagraphNode.ip} node as validator`);
+
+    this.customLogger(`Finished ${this.currentNode.ip} node as validator`);
   }
 
   async joinNodeToCluster(referenceMetagraphNode: MetagraphNode) {
-    this.log(
-      `Joining node ${this.metagraphNode.ip} to the node ${referenceMetagraphNode.ip}`,
+    this.customLogger(
+      `Joining node ${this.currentNode.ip} to the node ${referenceMetagraphNode.ip}`,
     );
+
     const { ip: referenceIp } = referenceMetagraphNode;
     const { public: publicPort, cli: cliPort } =
       config.metagraph.layers.ml0.ports;
@@ -165,21 +178,23 @@ export class MetagraphL0 {
         `Could not get node info of node ${referenceIp} on layer ml0`,
       );
     }
+
     const command = `
     cd metagraph-l0
     curl -v -X POST http://localhost:${cliPort}/cluster/join -H "Content-type: application/json" -d '{ "id":"${nodeInfo.id}", "ip": "${nodeInfo.host}", "p2pPort": ${nodeInfo.p2pPort} }'`;
 
-    console.log(`Joining to node ${JSON.stringify(nodeInfo)}`);
+    this.customLogger(`Joining to node ${JSON.stringify(nodeInfo)}`);
 
     await this.sshService.executeCommand(command);
-    this.log(
-      `Finished joining node ${this.metagraphNode.ip} to the node ${referenceMetagraphNode.ip}`,
+
+    this.customLogger(
+      `Finished joining node ${this.currentNode.ip} to the node ${referenceMetagraphNode.ip}`,
     );
   }
 
   async startCluster(validatorHosts: ISshService[]) {
     await this.startRollbackNodeL0();
-    await waitForNode(this.metagraphNode, 'ml0', 'Ready');
+    await waitForNode(this.currentNode, 'ml0', 'Ready', this.logger);
     const promises = [];
     for (const validatorHost of validatorHosts) {
       promises.push(this.startAndJoinValidator(validatorHost));

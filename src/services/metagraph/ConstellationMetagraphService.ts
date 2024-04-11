@@ -1,26 +1,35 @@
 import axios from 'axios';
 
 import config from '@config/config.json';
+import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService, {
   MetagraphNode,
   MetagraphNodeInfo,
   MetagraphSnapshotInfo,
-} from '@interfaces/services/IMetagraphService';
+} from '@interfaces/services/metagraph/IMetagraphService';
 
 export default class ConstellationMetagraphService
   implements IMetagraphService
 {
-  public metagraphId: string;
-  public nodes: MetagraphNode[];
-  public networName: string;
+  metagraphId: string;
+  nodes: MetagraphNode[];
+  networName: string;
+  logger: ILoggerService;
+  metagraphSnapshotInfo: MetagraphSnapshotInfo;
 
-  constructor() {
+  constructor(logger: ILoggerService) {
     this.metagraphId = config.metagraph.id;
     this.nodes = config.metagraph.nodes;
     this.networName = config.network.name;
+    this.logger = logger;
+    this.metagraphSnapshotInfo = {
+      lastSnapshotTimestamp: 0,
+      lastSnapshotOrdinal: 0,
+      lastSnapshotHash: '',
+    };
   }
 
-  async getLastMetagraphInfo(): Promise<MetagraphSnapshotInfo> {
+  async setLastMetagraphInfo(): Promise<void> {
     const beUrl = `https://be-${this.networName}.constellationnetwork.io/currency/${this.metagraphId}/snapshots/latest`;
     try {
       const response = await axios.get(beUrl);
@@ -28,11 +37,11 @@ export default class ConstellationMetagraphService
       const lastSnapshotOrdinal: number = response.data.data.ordinal;
       const lastSnapshotHash: string = response.data.data.hash;
 
-      console.log(
+      this.logger.info(
         `LAST SNAPSHOT OF METAGRAPH ${this.metagraphId}: ${lastSnapshotTimestamp}. Ordinal: ${lastSnapshotOrdinal}. Hash: ${lastSnapshotHash}`,
       );
 
-      return {
+      this.metagraphSnapshotInfo = {
         lastSnapshotTimestamp,
         lastSnapshotOrdinal,
         lastSnapshotHash,
@@ -62,15 +71,15 @@ export default class ConstellationMetagraphService
   async checkIfNodeIsHealthy(nodeIp: string, nodePort: number) {
     const nodeInfo = await this.getNodeInfo(nodeIp, nodePort);
     if (!nodeInfo) {
-      console.log(`Node ${nodeIp}:${nodePort} is UNHEALTHY`);
+      this.logger.info(`Node ${nodeIp}:${nodePort} is UNHEALTHY`);
       return false;
     }
     if (nodeInfo.state !== 'Ready') {
-      console.log(`Node ${nodeIp}:${nodePort} is UNHEALTHY`);
+      this.logger.info(`Node ${nodeIp}:${nodePort} is UNHEALTHY`);
       return false;
     }
 
-    console.log(`Node ${nodeIp}:${nodePort} is HEALTHY`);
+    this.logger.info(`Node ${nodeIp}:${nodePort} is HEALTHY`);
     return true;
   }
 }

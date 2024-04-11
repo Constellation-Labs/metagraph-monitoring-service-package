@@ -1,3 +1,5 @@
+import ILoggerService from '../logger/ILoggerService';
+
 export type MetagraphNode = {
   ip: string;
   username: string;
@@ -27,8 +29,10 @@ export default interface IMetagraphService {
   metagraphId: string;
   nodes: MetagraphNode[];
   networName: string;
+  logger: ILoggerService;
+  metagraphSnapshotInfo: MetagraphSnapshotInfo;
 
-  getLastMetagraphInfo(): Promise<MetagraphSnapshotInfo>;
+  setLastMetagraphInfo(): Promise<void>;
   getNodeInfo(
     nodeIp: string,
     nodePort: number,

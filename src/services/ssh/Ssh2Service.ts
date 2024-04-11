@@ -4,8 +4,9 @@ import path from 'path';
 import { Client } from 'ssh2';
 
 import 'module-alias';
-import { MetagraphNode } from '@interfaces/services/IMetagraphService';
-import ISshService from '@interfaces/services/ISshService';
+import ILoggerService from '@interfaces/services/logger/ILoggerService';
+import { MetagraphNode } from '@interfaces/services/metagraph/IMetagraphService';
+import ISshService from '@interfaces/services/ssh/ISshService';
 
 export class Ssh2Service implements ISshService {
   private ip: string;
@@ -13,20 +14,24 @@ export class Ssh2Service implements ISshService {
   private privateKey: Buffer;
   private defaultPath?: string;
 
-  public nodeNumber: number;
-  public connection: Client;
-  public metagraphNode: MetagraphNode;
+  nodeNumber: number;
+  connection: Client;
+  metagraphNode: MetagraphNode;
+  logger: ILoggerService;
 
   constructor(
     nodeNumber: number,
     metagraphNode: MetagraphNode,
+    logger: ILoggerService,
     defaultPath?: string,
   ) {
     this.nodeNumber = nodeNumber;
     this.ip = metagraphNode.ip;
     this.username = metagraphNode.username;
+    this.logger = logger;
     const myFilePath = path.join(
       __dirname,
+      '..',
       '..',
       '..',
       metagraphNode.privateKeyPath,
@@ -48,11 +53,11 @@ export class Ssh2Service implements ISshService {
           privateKey: this.privateKey,
         })
         .on('ready', () => {
-          console.log(`[Node ${this.nodeNumber}] Connected successfully`);
+          this.logger.info(`[Node ${this.nodeNumber}] Connected successfully`);
           resolve(this.connection);
         })
         .on('error', (err) => {
-          console.log(`[Node ${this.nodeNumber}] Error when connecting`);
+          this.logger.error(`[Node ${this.nodeNumber}] Error when connecting`);
           reject(err);
         });
     });
@@ -69,8 +74,8 @@ export class Ssh2Service implements ISshService {
     return new Promise((resolve, reject) => {
       conn.exec(commandParsed, (err, stream) => {
         if (err) {
-          console.log(
-            `[Node ${this.nodeNumber}] Error when running comm2and ${commandParsed}. Error: ${err}`,
+          this.logger.error(
+            `[Node ${this.nodeNumber}] Error when running command ${commandParsed}. Error: ${err}`,
           );
           reject(err);
           return;
@@ -82,7 +87,6 @@ export class Ssh2Service implements ISshService {
               resolve(data);
               return;
             }
-            console.log(`[Node ${this.nodeNumber}] Command output: ${data}`);
             resolve(data);
           })
           .on('data', (chunk: Buffer) => {

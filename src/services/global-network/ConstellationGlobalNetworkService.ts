@@ -1,22 +1,33 @@
 import axios from 'axios';
 
-import {
+import IGlobalNetworkService, {
   GlobalSnapshotInfo,
   NetworkNode,
-} from '@interfaces/services/IGlobalNetworkService';
+} from '@interfaces/services/global-network/IGlobalNetworkService';
+import ILoggerService from '@interfaces/services/logger/ILoggerService';
 
-export default class ConstellationGlobalNetworkService {
+export default class ConstellationGlobalNetworkService
+  implements IGlobalNetworkService
+{
   name: string;
   nodes: NetworkNode[];
   beUrl: string;
+  referenceSourceNode: NetworkNode;
+  logger: ILoggerService;
 
-  constructor(networkName: string, nodes: NetworkNode[]) {
+  constructor(
+    networkName: string,
+    nodes: NetworkNode[],
+    logger: ILoggerService,
+  ) {
     this.name = networkName;
     if (!nodes || Object.keys(nodes).length === 0) {
       throw Error(`Could not find nodes of network: ${networkName}`);
     }
     this.nodes = nodes;
     this.beUrl = `https://be-${networkName}.constellationnetwork.io/global-snapshots/latest`;
+    this.referenceSourceNode = { ip: '', id: '', port: 0 };
+    this.logger = logger;
   }
 
   async getLatestGlobalSnapshotOfNetwork(): Promise<GlobalSnapshotInfo> {
@@ -25,7 +36,7 @@ export default class ConstellationGlobalNetworkService {
       const lastSnapshotOrdinal: number = response.data.data.ordinal;
       const lastSnapshotHash: string = response.data.data.hash;
 
-      console.log(
+      this.logger.info(
         `LAST SNAPSHOT OF NETWORK: ${this.name}. Ordinal: ${lastSnapshotOrdinal}. Hash: ${lastSnapshotHash}`,
       );
 
@@ -48,19 +59,15 @@ export default class ConstellationGlobalNetworkService {
     const nodeUrl = `http://${nodeIp}:${nodePort}/global-snapshots/${snapshotHash}`;
     try {
       await axios.get(nodeUrl);
-      console.log(`Snapshot exists on node: ${nodeIp}`);
+      this.logger.info(`Snapshot exists on node: ${nodeIp}`);
       return true;
     } catch (e) {
-      console.log(`Snapshot does not exists on node: ${nodeIp}`);
+      this.logger.info(`Snapshot does not exists on node: ${nodeIp}`);
       return false;
     }
   }
 
-  async getReferenceSourceNode(): Promise<NetworkNode | null> {
-    console.log(
-      `Starting to get reference source node for network: ${this.name}`,
-    );
-
+  async setReferenceSourceNode(): Promise<void> {
     const { lastSnapshotHash } = await this.getLatestGlobalSnapshotOfNetwork();
 
     for (const node of this.nodes) {
@@ -71,10 +78,10 @@ export default class ConstellationGlobalNetworkService {
       );
 
       if (snapshotExistsOnNode) {
-        return node;
+        this.referenceSourceNode = node;
+        return;
       }
     }
-
-    return null;
+    throw Error(`Could not find reference source node`);
   }
 }

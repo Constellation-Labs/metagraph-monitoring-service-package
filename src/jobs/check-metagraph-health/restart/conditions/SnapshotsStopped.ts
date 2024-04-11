@@ -1,40 +1,45 @@
 import { utc } from 'moment';
 
 import IRestartCondition from '@interfaces/restart-conditions/IRestartCondition';
-import { NetworkNode } from '@interfaces/services/IGlobalNetworkService';
-import IMetagraphService from '@interfaces/services/IMetagraphService';
-import ISeedlistService from '@interfaces/services/ISeedlistService';
-import ISshService from '@interfaces/services/ISshService';
-import { LogsNames } from '@utils/get-logs-names';
+import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
+import ILoggerService from '@interfaces/services/logger/ILoggerService';
+import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
+import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
+import ISshService from '@interfaces/services/ssh/ISshService';
 
 import { FullMetagraph } from '../types/FullMetagraph';
 
 export default class SnapshotsStopped implements IRestartCondition {
-  metagraphService: IMetagraphService;
   sshServices: ISshService[];
+  metagraphService: IMetagraphService;
+  globalNetwokService: IGlobalNetworkService;
   seedlistService: ISeedlistService;
-  referenceSourceNode: NetworkNode;
-  logsNames: LogsNames;
+  logger: ILoggerService;
 
   private MAX_MINUTES_WITHOUT_NEW_SNAPSHOTS = 4;
 
   constructor(
     sshServices: ISshService[],
     metagraphService: IMetagraphService,
+    globalNetwokService: IGlobalNetworkService,
     seedlistService: ISeedlistService,
-    referenceSourceNode: NetworkNode,
-    logsNames: LogsNames,
+    logger: ILoggerService,
   ) {
     this.metagraphService = metagraphService;
     this.sshServices = sshServices;
+    this.globalNetwokService = globalNetwokService;
     this.seedlistService = seedlistService;
-    this.referenceSourceNode = referenceSourceNode;
-    this.logsNames = logsNames;
+    this.logger = logger;
+  }
+
+  private async customLogger(message: string) {
+    this.logger.info(`[SnapshotsStopped] ${message}`);
   }
 
   async shouldRestart(): Promise<boolean> {
+    this.customLogger(`Checking if snapshots stopped to being produced`);
     const { lastSnapshotTimestamp } =
-      await this.metagraphService.getLastMetagraphInfo();
+      await this.metagraphService.metagraphSnapshotInfo;
 
     const lastSnapshotTimestampDiff = utc().diff(
       lastSnapshotTimestamp,
@@ -42,8 +47,13 @@ export default class SnapshotsStopped implements IRestartCondition {
     );
 
     if (lastSnapshotTimestampDiff <= this.MAX_MINUTES_WITHOUT_NEW_SNAPSHOTS) {
+      this.customLogger(`Snapshots being produced normally`);
       return false;
     }
+
+    this.customLogger(
+      `Last snapshot produced greater than ${this.MAX_MINUTES_WITHOUT_NEW_SNAPSHOTS} ago. Triggering a restart`,
+    );
 
     return true;
   }
@@ -53,8 +63,8 @@ export default class SnapshotsStopped implements IRestartCondition {
       this.sshServices,
       this.metagraphService,
       this.seedlistService,
-      this.referenceSourceNode,
-      this.logsNames,
+      this.logger,
+      this.globalNetwokService.referenceSourceNode,
     );
 
     await fullMetagraph.performRestart();
