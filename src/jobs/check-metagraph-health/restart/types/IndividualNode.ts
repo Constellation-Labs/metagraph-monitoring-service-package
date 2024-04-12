@@ -6,7 +6,7 @@ import IMetagraphService, {
 } from '@interfaces/services/metagraph/IMetagraphService';
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
-import { Layers } from '@shared/constants';
+import { AvailableLayers, Layers, NodeStatuses } from '@shared/constants';
 
 import { CurrencyL1 } from '../layers/CurrencyL1';
 import { DataL1 } from '../layers/DataL1';
@@ -23,7 +23,7 @@ export class IndividualNode {
 
   referenceMetagraphNode: MetagraphNode;
   referenceSourceNode: NetworkNode;
-  layer: Layers;
+  layer: AvailableLayers;
 
   constructor(
     sshService: ISshService,
@@ -32,7 +32,7 @@ export class IndividualNode {
     logger: ILoggerService,
     referenceMetagraphNode: MetagraphNode,
     referenceSourceNode: NetworkNode,
-    layer: Layers,
+    layer: AvailableLayers,
   ) {
     this.sshService = sshService;
     this.metagraphService = metagraphService;
@@ -78,7 +78,7 @@ export class IndividualNode {
     await this.killProcess();
     await this.moveLog();
 
-    if (this.layer === 'ml0') {
+    if (this.layer === Layers.ML0) {
       const metagraphL0 = new MetagraphL0(
         this.sshService,
         this.metagraphService,
@@ -90,14 +90,14 @@ export class IndividualNode {
       await waitForNode(
         metagraphL0.currentNode,
         this.layer,
-        'ReadyToJoin',
+        NodeStatuses.READY_TO_JOIN,
         this.logger,
       );
       await metagraphL0.joinNodeToCluster(this.referenceMetagraphNode);
       return;
     }
 
-    if (this.layer === 'cl1') {
+    if (this.layer === Layers.CL1) {
       const currencyL1 = new CurrencyL1(
         this.sshService,
         this.metagraphService,
@@ -110,14 +110,14 @@ export class IndividualNode {
       await waitForNode(
         currencyL1.currentNode,
         this.layer,
-        'ReadyToJoin',
+        NodeStatuses.READY_TO_JOIN,
         this.logger,
       );
       await currencyL1.joinNodeToCluster(this.referenceMetagraphNode);
       return;
     }
 
-    if (this.layer === 'dl1') {
+    if (this.layer === Layers.DL1) {
       const dataL1 = new DataL1(
         this.sshService,
         this.metagraphService,
@@ -130,7 +130,7 @@ export class IndividualNode {
       await waitForNode(
         dataL1.currentNode,
         this.layer,
-        'ReadyToJoin',
+        NodeStatuses.READY_TO_JOIN,
         this.logger,
       );
       await dataL1.joinNodeToCluster(this.referenceMetagraphNode);

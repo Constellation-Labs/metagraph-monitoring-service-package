@@ -9,8 +9,9 @@ import ConstellationGlobalNetworkService from '@services/global-network/Constell
 import { ConsoleLoggerService } from '@services/logger/ConsoleLoggerService';
 import { FileLoggerService } from '@services/logger/FileLoggerService';
 import ConstellationMetagraphService from '@services/metagraph/ConstellationMetagraphService';
-import GithubSeedlistService from '@services/seedlist/GithubSeedlistService';
+import NoSeedlistService from '@services/seedlist/NoSeedlistService';
 import { Ssh2Service } from '@services/ssh/Ssh2Service';
+import { NetworkNames } from '@shared/constants';
 
 program
   .version('1.0.0')
@@ -76,7 +77,7 @@ const checkMetagraphHealth = async () => {
     nodes,
     loggerService,
   );
-  const githubSeedlistService = new GithubSeedlistService(loggerService);
+  const githubSeedlistService = new NoSeedlistService(loggerService);
   const sshServices = await intializeSshConnections(loggerService);
   const alertService = await new NoAlertsService(loggerService);
 
@@ -101,10 +102,22 @@ const checkMetagraphHealth = async () => {
 };
 
 async function periodicJob() {
+  const validNetworkNames: NetworkNames[] = [
+    'mainnet',
+    'integrationnet',
+    'testnet',
+  ];
+
+  if (!validNetworkNames.includes(config.network.name as NetworkNames)) {
+    throw Error('Invalid network');
+  }
+
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
       await checkMetagraphHealth();
+      options.force_restart = false;
+      console.log(`${JSON.stringify(options)}`);
     } catch (error) {
       continue;
     }

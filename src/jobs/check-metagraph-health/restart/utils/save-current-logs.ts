@@ -1,13 +1,13 @@
 import ISshService from '@interfaces/services/ssh/ISshService';
-import { Layers } from '@shared/constants';
+import { AvailableLayers, Layers } from '@shared/constants';
 import getLogsNames from '@utils/get-logs-names';
 
 export default async (
   sshService: ISshService,
-  layer: Layers,
+  layer: AvailableLayers,
 ): Promise<void> => {
   const logsNames = getLogsNames();
-  if (layer === 'ml0') {
+  if (layer === Layers.ML0) {
     await sshService.executeCommand(
       `
       mkdir -p restart_logs
@@ -20,7 +20,7 @@ export default async (
     );
     return;
   }
-  if (layer === 'cl1') {
+  if (layer === Layers.CL1) {
     await sshService.executeCommand(
       `
       mkdir -p restart_logs

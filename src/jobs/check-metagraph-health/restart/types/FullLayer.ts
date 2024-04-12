@@ -4,7 +4,7 @@ import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
-import { Layers } from '@shared/constants';
+import { AvailableLayers, Layers } from '@shared/constants';
 
 import { FullMetagraph } from './FullMetagraph';
 import { CurrencyL1 } from '../layers/CurrencyL1';
@@ -19,7 +19,7 @@ export class FullLayer {
   private logger: ILoggerService;
 
   referenceSourceNode: NetworkNode;
-  layer: Layers;
+  layer: AvailableLayers;
 
   constructor(
     sshServices: ISshService[],
@@ -27,7 +27,7 @@ export class FullLayer {
     seedlistService: ISeedlistService,
     logger: ILoggerService,
     referenceSourceNode: NetworkNode,
-    layer: Layers,
+    layer: AvailableLayers,
   ) {
     this.sshServices = sshServices;
     this.seedlistService = seedlistService;
@@ -107,7 +107,7 @@ export class FullLayer {
       `Validator nodes: ${JSON.stringify(validatorHosts.map((it) => it.metagraphNode))}`,
     );
 
-    if (this.layer === 'ml0') {
+    if (this.layer === Layers.ML0) {
       this.customLogger(
         `All layer ${this.layer} is offline, triggering a full restart`,
       );
@@ -121,7 +121,7 @@ export class FullLayer {
       return await fullCluster.performRestart();
     }
 
-    if (this.layer === 'cl1') {
+    if (this.layer === Layers.CL1) {
       this.customLogger(
         `All layer ${this.layer} is offline, triggering a layer restart`,
       );
@@ -136,7 +136,7 @@ export class FullLayer {
       await currencyL1.startCluster(validatorHosts);
     }
 
-    if (this.layer === 'dl1') {
+    if (this.layer === Layers.DL1) {
       this.customLogger(
         `All layer ${this.layer} is offline, triggering a layer restart`,
       );

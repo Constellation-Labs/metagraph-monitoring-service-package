@@ -5,8 +5,8 @@ import IAlertService, {
   AlertType,
 } from '@interfaces/services/alert/IAlertService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
+import { NetworkNames } from '@shared/constants';
 
-type NetworkNames = 'mainnet' | 'integrationnet' | 'testnet';
 export class OpsgenieAlertService implements IAlertService {
   logger: ILoggerService;
 
@@ -48,8 +48,8 @@ export class OpsgenieAlertService implements IAlertService {
         const nodeInfo = `
       Node ${idx + 1} - IP: ${node.ip}
       Metagraph L0 - http://${node.ip}:${config.metagraph.layers.ml0.ports.public}/node/info
-      ${'cl1' in config.metagraph.layers ? `Currency L1 - http://${node.ip}:${config.metagraph.layers.cl1.ports.public}/node/info` : ''}
-      ${'dl1' in config.metagraph.layers ? `Data L1 - http://${node.ip}:${config.metagraph.layers.dl1.ports.public}/node/info` : ''}
+      ${!config.metagraph.layers.cl1.ignore_layer ? `Currency L1 - http://${node.ip}:${config.metagraph.layers.cl1.ports.public}/node/info` : ''}
+      ${!config.metagraph.layers.dl1.ignore_layer ? `Data L1 - http://${node.ip}:${config.metagraph.layers.dl1.ports.public}/node/info` : ''}
       `.trim();
         return nodeInfo;
       })
@@ -89,8 +89,8 @@ export class OpsgenieAlertService implements IAlertService {
         const nodeInfo = `
       Node ${idx + 1} - IP: ${node.ip}
       Metagraph L0 - http://${node.ip}:${config.metagraph.layers.ml0.ports.public}/node/info
-      ${'cl1' in config.metagraph.layers ? `Currency L1 - http://${node.ip}:${config.metagraph.layers.cl1.ports.public}/node/info` : ''}
-      ${'dl1' in config.metagraph.layers ? `Data L1 - http://${node.ip}:${config.metagraph.layers.dl1.ports.public}/node/info` : ''}
+      ${!config.metagraph.layers.cl1.ignore_layer ? `Currency L1 - http://${node.ip}:${config.metagraph.layers.cl1.ports.public}/node/info` : ''}
+      ${!config.metagraph.layers.dl1.ignore_layer ? `Data L1 - http://${node.ip}:${config.metagraph.layers.dl1.ports.public}/node/info` : ''}
       `.trim();
         return nodeInfo;
       })

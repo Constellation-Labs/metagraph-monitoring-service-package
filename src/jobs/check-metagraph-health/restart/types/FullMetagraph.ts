@@ -4,6 +4,7 @@ import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
+import { Layers } from '@shared/constants';
 
 import { CurrencyL1 } from '../layers/CurrencyL1';
 import { DataL1 } from '../layers/DataL1';
@@ -78,9 +79,13 @@ export class FullMetagraph {
         `Saving current logs of all layers in node ${sshService.metagraphNode.ip}`,
       );
 
-      await saveCurrentLogs(sshService, 'ml0');
-      await saveCurrentLogs(sshService, 'cl1');
-      await saveCurrentLogs(sshService, 'dl1');
+      await saveCurrentLogs(sshService, Layers.ML0);
+
+      !config.metagraph.layers.cl1.ignore_layer &&
+        (await saveCurrentLogs(sshService, Layers.CL1));
+
+      !config.metagraph.layers.dl1.ignore_layer &&
+        (await saveCurrentLogs(sshService, Layers.DL1));
 
       this.customLogger(
         `Finished saving current logs in node ${sshService.metagraphNode.ip}`,
@@ -157,7 +162,7 @@ export class FullMetagraph {
     await metagraphL0.startCluster(validatorHosts);
 
     const promises = [];
-    if ('cl1' in config.metagraph.layers) {
+    if (!config.metagraph.layers.cl1.ignore_layer) {
       const currencyL1 = new CurrencyL1(
         rollbackHost,
         this.metagraphService,
@@ -169,7 +174,7 @@ export class FullMetagraph {
       promises.push(currencyL1.startCluster(validatorHosts));
     }
 
-    if ('dl1' in config.metagraph.layers) {
+    if (!config.metagraph.layers.dl1.ignore_layer) {
       const dataL1 = new DataL1(
         rollbackHost,
         this.metagraphService,

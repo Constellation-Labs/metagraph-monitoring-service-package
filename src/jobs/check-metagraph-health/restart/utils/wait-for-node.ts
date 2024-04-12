@@ -3,13 +3,13 @@ import axios from 'axios';
 import config from '@config/config.json';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import { MetagraphNode } from '@interfaces/services/metagraph/IMetagraphService';
-import { Layers } from '@shared/constants';
+import { AvailableLayers } from '@shared/constants';
 
 import sleep from './sleep';
 
 export default async (
   metagraphNode: MetagraphNode,
-  layer: Layers,
+  layer: AvailableLayers,
   state: string,
   logger: ILoggerService,
 ): Promise<boolean | undefined> => {

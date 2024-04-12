@@ -6,6 +6,7 @@ import IMetagraphService, {
 } from '@interfaces/services/metagraph/IMetagraphService';
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
+import { Layers, NodeStatuses } from '@shared/constants';
 
 import waitForNode from '../utils/wait-for-node';
 
@@ -89,8 +90,8 @@ export class MetagraphL0 {
     await validatorMl0.startValidatorNodeL0();
     await waitForNode(
       validatorMl0.currentNode,
-      'ml0',
-      'ReadyToJoin',
+      Layers.ML0,
+      NodeStatuses.READY_TO_JOIN,
       this.logger,
     );
     await validatorMl0.joinNodeToCluster(this.currentNode);
@@ -118,7 +119,7 @@ export class MetagraphL0 {
     this.customLogger(`Starting node ${this.currentNode.ip} as rollback`);
 
     const { url, fileName } =
-      await this.seedlistService.buildSeedlistInformation('ml0');
+      await this.seedlistService.buildSeedlistInformation(Layers.ML0);
 
     const command = this.buildNodeEnvVariables();
 
@@ -141,7 +142,7 @@ export class MetagraphL0 {
     this.customLogger(`Starting node ${this.currentNode.ip} as validator`);
 
     const { url, fileName } =
-      await this.seedlistService.buildSeedlistInformation('ml0');
+      await this.seedlistService.buildSeedlistInformation(Layers.ML0);
 
     const command = this.buildNodeEnvVariables();
 
@@ -194,7 +195,12 @@ export class MetagraphL0 {
 
   async startCluster(validatorHosts: ISshService[]) {
     await this.startRollbackNodeL0();
-    await waitForNode(this.currentNode, 'ml0', 'Ready', this.logger);
+    await waitForNode(
+      this.currentNode,
+      Layers.ML0,
+      NodeStatuses.READY,
+      this.logger,
+    );
     const promises = [];
     for (const validatorHost of validatorHosts) {
       promises.push(this.startAndJoinValidator(validatorHost));

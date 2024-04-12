@@ -2,7 +2,7 @@ import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import ISeedlistService, {
   SeedListInfo,
 } from '@interfaces/services/seedlist/ISeedlistService';
-import { Layers } from '@shared/constants';
+import { AvailableLayers } from '@shared/constants';
 
 export default class NoSeedlistService implements ISeedlistService {
   logger: ILoggerService;
@@ -15,7 +15,9 @@ export default class NoSeedlistService implements ISeedlistService {
     this.logger.info(`[NoSeedlistService] ${message}`);
   }
 
-  async buildSeedlistInformation(layer: Layers): Promise<SeedListInfo> {
+  async buildSeedlistInformation(
+    layer: AvailableLayers,
+  ): Promise<SeedListInfo> {
     this.customLogger(`No seedlist for layer ${layer}`);
     return {
       url: '',

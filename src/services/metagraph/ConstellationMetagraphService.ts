@@ -7,6 +7,7 @@ import IMetagraphService, {
   MetagraphNodeInfo,
   MetagraphSnapshotInfo,
 } from '@interfaces/services/metagraph/IMetagraphService';
+import { NodeStatuses } from '@shared/constants';
 
 export default class ConstellationMetagraphService
   implements IMetagraphService
@@ -78,7 +79,7 @@ export default class ConstellationMetagraphService
       this.customLogger(`Node ${nodeIp}:${nodePort} is UNHEALTHY`);
       return false;
     }
-    if (nodeInfo.state !== 'Ready') {
+    if (nodeInfo.state !== NodeStatuses.READY) {
       this.customLogger(`Node ${nodeIp}:${nodePort} is UNHEALTHY`);
       return false;
     }

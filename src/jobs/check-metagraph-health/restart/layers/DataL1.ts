@@ -6,6 +6,7 @@ import IMetagraphService, {
 } from '@interfaces/services/metagraph/IMetagraphService';
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
+import { Layers, NodeStatuses } from '@shared/constants';
 
 import waitForNode from '../utils/wait-for-node';
 
@@ -110,8 +111,8 @@ export class DataL1 {
     await validatorDl1.startValidatorNodeDl1();
     await waitForNode(
       validatorDl1.currentNode,
-      'dl1',
-      'ReadyToJoin',
+      Layers.DL1,
+      NodeStatuses.READY_TO_JOIN,
       this.logger,
     );
     await validatorDl1.joinNodeToCluster(this.currentNode);
@@ -141,7 +142,7 @@ export class DataL1 {
     );
 
     const { url, fileName } =
-      await this.seedlistService.buildSeedlistInformation('dl1');
+      await this.seedlistService.buildSeedlistInformation(Layers.DL1);
 
     const command = await this.buildNodeEnvVariables();
 
@@ -165,7 +166,7 @@ export class DataL1 {
     this.customLogger(`Starting node ${this.currentNode.ip} as validator`);
 
     const { url, fileName } =
-      await this.seedlistService.buildSeedlistInformation('dl1');
+      await this.seedlistService.buildSeedlistInformation(Layers.DL1);
 
     const command = await this.buildNodeEnvVariables();
 
@@ -218,7 +219,12 @@ export class DataL1 {
 
   async startCluster(validatorHosts: ISshService[]) {
     await this.startInitialValidatorDl1();
-    await waitForNode(this.currentNode, 'dl1', 'Ready', this.logger);
+    await waitForNode(
+      this.currentNode,
+      Layers.DL1,
+      NodeStatuses.READY,
+      this.logger,
+    );
     const promises = [];
     for (const validatorHost of validatorHosts) {
       promises.push(this.startAndJoinValidator(validatorHost));
