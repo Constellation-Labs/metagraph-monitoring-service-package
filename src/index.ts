@@ -117,7 +117,6 @@ async function periodicJob() {
     try {
       await checkMetagraphHealth();
       options.force_restart = false;
-      console.log(`${JSON.stringify(options)}`);
     } catch (error) {
       continue;
     }
