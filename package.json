@@ -6,7 +6,7 @@
   "scripts": {
     "start": "nohup ts-node -r tsconfig-paths/register src/index.ts > output.log 2>&1 & echo $! > pidfile.txt",
     "dev": "ts-node -r tsconfig-paths/register src/index.ts --dev_mode",
-    "force-restart": "ts-node -r tsconfig-paths/register src/index.ts --force_restart",
+    "force-restart": "nohup ts-node -r tsconfig-paths/register src/index.ts --force_restart > output.log 2>&1 & echo $! > pidfile.txt",
     "force-restart-dev": "ts-node -r tsconfig-paths/register src/index.ts --dev_mode --force_restart",
     "lint": "eslint . --ext .ts --fix",
     "prettier": "prettier --write ."
