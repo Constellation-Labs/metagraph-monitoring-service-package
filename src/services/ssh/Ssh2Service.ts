@@ -43,6 +43,14 @@ export class Ssh2Service implements ISshService {
     this.connection = new Client();
   }
 
+  private async customLogger(message: string, level: 'info' | 'error') {
+    if (level === 'error') {
+      this.logger.error(`[Ssh2Service] ${message}`);
+    } else {
+      this.logger.info(`[Ssh2Service] ${message}`);
+    }
+  }
+
   async setConnection() {
     await new Promise((resolve, reject) => {
       this.connection
@@ -53,11 +61,17 @@ export class Ssh2Service implements ISshService {
           privateKey: this.privateKey,
         })
         .on('ready', () => {
-          this.logger.info(`[Node ${this.nodeNumber}] Connected successfully`);
+          this.customLogger(
+            `[Node ${this.nodeNumber}] Connected successfully`,
+            'info',
+          );
           resolve(this.connection);
         })
         .on('error', (err) => {
-          this.logger.error(`[Node ${this.nodeNumber}] Error when connecting`);
+          this.customLogger(
+            `[Node ${this.nodeNumber}] Error when connecting`,
+            'error',
+          );
           reject(err);
         });
     });
@@ -74,8 +88,9 @@ export class Ssh2Service implements ISshService {
     return new Promise((resolve, reject) => {
       conn.exec(commandParsed, (err, stream) => {
         if (err) {
-          this.logger.error(
+          this.customLogger(
             `[Node ${this.nodeNumber}] Error when running command ${commandParsed}. Error: ${err}`,
+            'error',
           );
           reject(err);
           return;

@@ -4,6 +4,7 @@ import config from '@config/config.json';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 import CheckMetagraphHealth from '@jobs/check-metagraph-health/CheckMetagraphHealth';
+import { NoAlertsService } from '@services/alert/NoAlertsService';
 import ConstellationGlobalNetworkService from '@services/global-network/ConstellationGlobalNetworkService';
 import { ConsoleLoggerService } from '@services/logger/ConsoleLoggerService';
 import { FileLoggerService } from '@services/logger/FileLoggerService';
@@ -27,7 +28,9 @@ const intializeSshConnections = async (
   logger.info(
     `##################### INITIALIZING SSH CONNECTIONS #####################`,
   );
-  for (let idx = 0; idx < metagraphNodes.length; idx++) {
+
+  const promises = [];
+  const initializeSshConnection = async (idx: number) => {
     logger.info(`Starting ssh connection to node ${idx + 1}`);
     const sshService = new Ssh2Service(
       idx + 1,
@@ -38,7 +41,13 @@ const intializeSshConnections = async (
 
     await sshService.setConnection();
     sshServices.push(sshService);
+  };
+
+  for (let idx = 0; idx < metagraphNodes.length; idx++) {
+    promises.push(initializeSshConnection(idx));
   }
+
+  await Promise.all(promises);
 
   return sshServices;
 };
@@ -61,7 +70,6 @@ const checkMetagraphHealth = async () => {
   const loggerService = options.dev_mode
     ? new ConsoleLoggerService()
     : new FileLoggerService();
-
   const metagraphService = new ConstellationMetagraphService(loggerService);
   const globalNetworkService = new ConstellationGlobalNetworkService(
     name,
@@ -70,6 +78,8 @@ const checkMetagraphHealth = async () => {
   );
   const githubSeedlistService = new GithubSeedlistService(loggerService);
   const sshServices = await intializeSshConnections(loggerService);
+  const alertService = await new NoAlertsService(loggerService);
+
   try {
     const checkMetagraphHealth = new CheckMetagraphHealth(
       sshServices,
@@ -77,6 +87,7 @@ const checkMetagraphHealth = async () => {
       globalNetworkService,
       githubSeedlistService,
       loggerService,
+      alertService,
       options.force_restart,
     );
 
@@ -89,4 +100,18 @@ const checkMetagraphHealth = async () => {
   return;
 };
 
-checkMetagraphHealth();
+async function periodicJob() {
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    try {
+      await checkMetagraphHealth();
+    } catch (error) {
+      continue;
+    }
+    await new Promise((resolve) =>
+      setTimeout(resolve, config.check_healthy_interval_in_minutes * 60 * 1000),
+    );
+  }
+}
+
+periodicJob();

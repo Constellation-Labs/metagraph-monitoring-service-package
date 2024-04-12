@@ -1,4 +1,6 @@
-import IRestartCondition from '@interfaces/restart-conditions/IRestartCondition';
+import IRestartCondition, {
+  ShouldRestartInfo,
+} from '@interfaces/restart-conditions/IRestartCondition';
 import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
@@ -160,8 +162,8 @@ export default class UnhealthyNodes implements IRestartCondition {
     }
   }
 
-  async shouldRestart(): Promise<boolean> {
-    this.logger.info(`[UnhealthyNodes] Checking if we have unhealthy nodes`);
+  async shouldRestart(): Promise<ShouldRestartInfo> {
+    this.customLogger(`Checking if we have unhealthy nodes`);
     for (const sshService of this.sshServices) {
       const { metagraphNode } = sshService;
       this.customLogger(`[ML0] Checking node ${metagraphNode.ip}`);
@@ -199,11 +201,23 @@ export default class UnhealthyNodes implements IRestartCondition {
       }
     }
 
-    return (
+    const shouldRestart =
       this.metagraphL0UnhealthyNodes.length > 0 ||
       this.currencyL1UnhealthyNodes.length > 0 ||
-      this.dataL1NUnhealthyNodes.length > 0
-    );
+      this.dataL1NUnhealthyNodes.length > 0;
+
+    const restartType =
+      this.metagraphL0UnhealthyNodes.length === 3
+        ? 'Full Metagraph'
+        : this.currencyL1UnhealthyNodes.length === 3
+          ? 'Full layer CL 1'
+          : this.dataL1NUnhealthyNodes.length === 3
+            ? 'Full layer DL 1'
+            : `Individual nodes`;
+    return {
+      shouldRestart,
+      restartType,
+    };
   }
 
   async triggerRestart(): Promise<void> {

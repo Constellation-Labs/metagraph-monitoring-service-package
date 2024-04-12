@@ -11,8 +11,12 @@ export default class NoSeedlistService implements ISeedlistService {
     this.logger = logger;
   }
 
+  private async customLogger(message: string) {
+    this.logger.info(`[NoSeedlistService] ${message}`);
+  }
+
   async buildSeedlistInformation(layer: Layers): Promise<SeedListInfo> {
-    this.logger.info(`No seedlist for layer ${layer}`);
+    this.customLogger(`No seedlist for layer ${layer}`);
     return {
       url: '',
       fileName: '',

@@ -14,6 +14,10 @@ export default class GithubSeedlistService implements ISeedlistService {
     this.logger = logger;
   }
 
+  private async customLogger(message: string) {
+    this.logger.info(`[GithubSeedlistService] ${message}`);
+  }
+
   async checkIfSeedlistExists(url: string): Promise<boolean> {
     try {
       const response = await axios.head(url);
@@ -43,7 +47,7 @@ export default class GithubSeedlistService implements ISeedlistService {
     const { version } = config.metagraph;
     const { base_url, file_name } = seedlistInformation;
     const seedlistUrl = `${base_url}/${version}/${file_name}`;
-    this.logger.info(`Checking if file exists on Github URL: ${seedlistUrl}`);
+    this.customLogger(`Checking if file exists on Github URL: ${seedlistUrl}`);
     const seedlistExists = await this.checkIfSeedlistExists(seedlistUrl);
     if (!seedlistExists) {
       throw Error(

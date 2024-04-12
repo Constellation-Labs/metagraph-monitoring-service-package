@@ -29,6 +29,10 @@ export default class ConstellationMetagraphService
     };
   }
 
+  private async customLogger(message: string) {
+    this.logger.info(`[ConstellationMetagraphService] ${message}`);
+  }
+
   async setLastMetagraphInfo(): Promise<void> {
     const beUrl = `https://be-${this.networName}.constellationnetwork.io/currency/${this.metagraphId}/snapshots/latest`;
     try {
@@ -37,7 +41,7 @@ export default class ConstellationMetagraphService
       const lastSnapshotOrdinal: number = response.data.data.ordinal;
       const lastSnapshotHash: string = response.data.data.hash;
 
-      this.logger.info(
+      this.customLogger(
         `LAST SNAPSHOT OF METAGRAPH ${this.metagraphId}: ${lastSnapshotTimestamp}. Ordinal: ${lastSnapshotOrdinal}. Hash: ${lastSnapshotHash}`,
       );
 
@@ -71,15 +75,15 @@ export default class ConstellationMetagraphService
   async checkIfNodeIsHealthy(nodeIp: string, nodePort: number) {
     const nodeInfo = await this.getNodeInfo(nodeIp, nodePort);
     if (!nodeInfo) {
-      this.logger.info(`Node ${nodeIp}:${nodePort} is UNHEALTHY`);
+      this.customLogger(`Node ${nodeIp}:${nodePort} is UNHEALTHY`);
       return false;
     }
     if (nodeInfo.state !== 'Ready') {
-      this.logger.info(`Node ${nodeIp}:${nodePort} is UNHEALTHY`);
+      this.customLogger(`Node ${nodeIp}:${nodePort} is UNHEALTHY`);
       return false;
     }
 
-    this.logger.info(`Node ${nodeIp}:${nodePort} is HEALTHY`);
+    this.customLogger(`Node ${nodeIp}:${nodePort} is HEALTHY`);
     return true;
   }
 }

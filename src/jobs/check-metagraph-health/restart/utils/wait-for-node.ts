@@ -27,6 +27,13 @@ export default async (
       if (nodeState === state) {
         return true;
       }
+
+      if (idx === LIMIT - 1) {
+        throw new Error(
+          `Node ${metagraphNode.ip} on layer ${layer} doesn't reach ${state} after ${5 * LIMIT} seconds`,
+        );
+      }
+
       logger.info(
         `Node ${metagraphNode.ip} on layer ${layer} not ${state} yet, waiting 5s (${idx + 1}/${LIMIT})`,
       );

@@ -97,5 +97,6 @@
         "id": "46daea11ca239cb8c0c8cdeb27db9dbe9c03744908a8a389a60d14df2ddde409260a93334d74957331eec1af323f458b12b3a6c3b8e05885608aae7e3a77eac7"
       }
     ]
-  }
+  },
+  "check_healthy_interval_in_minutes": 5
 }

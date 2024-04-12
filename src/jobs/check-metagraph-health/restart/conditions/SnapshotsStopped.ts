@@ -1,6 +1,8 @@
 import { utc } from 'moment';
 
-import IRestartCondition from '@interfaces/restart-conditions/IRestartCondition';
+import IRestartCondition, {
+  ShouldRestartInfo,
+} from '@interfaces/restart-conditions/IRestartCondition';
 import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
@@ -36,7 +38,7 @@ export default class SnapshotsStopped implements IRestartCondition {
     this.logger.info(`[SnapshotsStopped] ${message}`);
   }
 
-  async shouldRestart(): Promise<boolean> {
+  async shouldRestart(): Promise<ShouldRestartInfo> {
     this.customLogger(`Checking if snapshots stopped to being produced`);
     const { lastSnapshotTimestamp } =
       await this.metagraphService.metagraphSnapshotInfo;
@@ -48,14 +50,20 @@ export default class SnapshotsStopped implements IRestartCondition {
 
     if (lastSnapshotTimestampDiff <= this.MAX_MINUTES_WITHOUT_NEW_SNAPSHOTS) {
       this.customLogger(`Snapshots being produced normally`);
-      return false;
+      return {
+        shouldRestart: false,
+        restartType: '',
+      };
     }
 
     this.customLogger(
-      `Last snapshot produced greater than ${this.MAX_MINUTES_WITHOUT_NEW_SNAPSHOTS} ago. Triggering a restart`,
+      `Last snapshot produced greater than ${this.MAX_MINUTES_WITHOUT_NEW_SNAPSHOTS} minutes ago. Triggering a restart`,
     );
 
-    return true;
+    return {
+      shouldRestart: true,
+      restartType: 'Full Metagraph',
+    };
   }
 
   async triggerRestart(): Promise<void> {

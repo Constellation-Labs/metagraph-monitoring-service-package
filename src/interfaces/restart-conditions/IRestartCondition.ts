@@ -4,6 +4,10 @@ import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService'
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 
+export type ShouldRestartInfo = {
+  shouldRestart: boolean;
+  restartType: string;
+};
 export default interface IRestartCondition {
   sshServices: ISshService[];
   metagraphService: IMetagraphService;
@@ -11,6 +15,6 @@ export default interface IRestartCondition {
   seedlistService: ISeedlistService;
   logger: ILoggerService;
 
-  shouldRestart(): Promise<boolean>;
+  shouldRestart(): Promise<ShouldRestartInfo>;
   triggerRestart(): Promise<void>;
 }

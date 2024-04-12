@@ -30,13 +30,17 @@ export default class ConstellationGlobalNetworkService
     this.logger = logger;
   }
 
+  private async customLogger(message: string) {
+    this.logger.info(`[ConstellationGlobalNetworkService] ${message}`);
+  }
+
   async getLatestGlobalSnapshotOfNetwork(): Promise<GlobalSnapshotInfo> {
     try {
       const response = await axios.get(this.beUrl);
       const lastSnapshotOrdinal: number = response.data.data.ordinal;
       const lastSnapshotHash: string = response.data.data.hash;
 
-      this.logger.info(
+      this.customLogger(
         `LAST SNAPSHOT OF NETWORK: ${this.name}. Ordinal: ${lastSnapshotOrdinal}. Hash: ${lastSnapshotHash}`,
       );
 
@@ -59,10 +63,10 @@ export default class ConstellationGlobalNetworkService
     const nodeUrl = `http://${nodeIp}:${nodePort}/global-snapshots/${snapshotHash}`;
     try {
       await axios.get(nodeUrl);
-      this.logger.info(`Snapshot exists on node: ${nodeIp}`);
+      this.customLogger(`Snapshot exists on node: ${nodeIp}`);
       return true;
     } catch (e) {
-      this.logger.info(`Snapshot does not exists on node: ${nodeIp}`);
+      this.customLogger(`Snapshot does not exists on node: ${nodeIp}`);
       return false;
     }
   }

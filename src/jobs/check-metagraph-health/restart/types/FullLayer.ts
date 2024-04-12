@@ -42,7 +42,8 @@ export class FullLayer {
   }
 
   private async killProcesses() {
-    for (const sshService of this.sshServices) {
+    const promises = [];
+    const killProcess = async (sshService: ISshService) => {
       this.customLogger(
         `Killing ${this.layer} current processes in node ${sshService.metagraphNode.ip}`,
       );
@@ -55,11 +56,18 @@ export class FullLayer {
       this.customLogger(
         `Finished killing processes in node ${sshService.metagraphNode.ip}`,
       );
+    };
+
+    for (const sshService of this.sshServices) {
+      promises.push(killProcess(sshService));
     }
+
+    await Promise.all(promises);
   }
 
   private async moveLogs() {
-    for (const sshService of this.sshServices) {
+    const promises = [];
+    const moveLogs = async (sshService: ISshService) => {
       this.customLogger(
         `Saving current logs of ${this.layer} in node ${sshService.metagraphNode.ip}`,
       );
@@ -69,7 +77,13 @@ export class FullLayer {
       this.customLogger(
         `Finished saving current logs in node ${sshService.metagraphNode.ip}`,
       );
+    };
+
+    for (const sshService of this.sshServices) {
+      promises.push(moveLogs(sshService));
     }
+
+    await Promise.all(promises);
   }
 
   async performRestart() {
@@ -86,8 +100,12 @@ export class FullLayer {
 
     const validatorHosts = this.sshServices.filter((it) => it.nodeNumber !== 1);
 
-    this.customLogger(`Rollback node: ${JSON.stringify(rollbackHost)}`);
-    this.customLogger(`Validator nodes: ${JSON.stringify(validatorHosts)}`);
+    this.customLogger(
+      `Rollback node: ${JSON.stringify(rollbackHost.metagraphNode)}`,
+    );
+    this.customLogger(
+      `Validator nodes: ${JSON.stringify(validatorHosts.map((it) => it.metagraphNode))}`,
+    );
 
     if (this.layer === 'ml0') {
       this.customLogger(

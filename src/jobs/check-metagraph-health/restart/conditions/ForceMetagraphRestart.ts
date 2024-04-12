@@ -1,4 +1,6 @@
-import IRestartCondition from '@interfaces/restart-conditions/IRestartCondition';
+import IRestartCondition, {
+  ShouldRestartInfo,
+} from '@interfaces/restart-conditions/IRestartCondition';
 import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
@@ -28,8 +30,13 @@ export default class ForceMetagraphRestart implements IRestartCondition {
     this.logger = logger;
   }
 
-  async shouldRestart(): Promise<boolean> {
-    return new Promise((resolve) => resolve(false));
+  async shouldRestart(): Promise<ShouldRestartInfo> {
+    return new Promise((resolve) =>
+      resolve({
+        shouldRestart: false,
+        restartType: 'Full metagraph',
+      }),
+    );
   }
 
   async triggerRestart(): Promise<void> {

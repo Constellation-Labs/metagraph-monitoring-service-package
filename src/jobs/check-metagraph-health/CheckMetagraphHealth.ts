@@ -1,5 +1,6 @@
 import config from '@config/config.json';
 import IRestartCondition from '@interfaces/restart-conditions/IRestartCondition';
+import IAlertService from '@interfaces/services/alert/IAlertService';
 import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
@@ -15,6 +16,7 @@ export default class CheckMetagraphHealth {
   private globalNetworkService: IGlobalNetworkService;
   private seedlistService: ISeedlistService;
   private logger: ILoggerService;
+  private alertService: IAlertService;
 
   private forceRestart: boolean;
 
@@ -24,6 +26,7 @@ export default class CheckMetagraphHealth {
     globalNetworkService: IGlobalNetworkService,
     seedlistService: ISeedlistService,
     logger: ILoggerService,
+    alertService: IAlertService,
     forceRestart: boolean,
   ) {
     this.sshServices = sshServices;
@@ -31,57 +34,93 @@ export default class CheckMetagraphHealth {
     this.globalNetworkService = globalNetworkService;
     this.seedlistService = seedlistService;
     this.logger = logger;
+    this.alertService = alertService;
     this.forceRestart = forceRestart;
   }
 
+  private async closeRemoteAlerts() {
+    await this.alertService.closeAlert('RestartStarted');
+    await this.alertService.closeAlert('RestartFailed');
+  }
+
   async execute() {
-    this.logger.info(
-      `##################### STARTING CHECK METAGRAPH HEALTH #####################`,
-    );
-
-    this.logger.info('Getting valid global network reference source node');
-    await this.globalNetworkService.setReferenceSourceNode();
-
-    this.logger.info('Getting last metagraph snapshot info');
-    await this.metagraphService.setLastMetagraphInfo();
-
-    if (this.forceRestart) {
+    try {
       this.logger.info(
-        'Force restart provided, starting the complete restart of metagraph',
+        `##################### STARTING CHECK METAGRAPH HEALTH #####################`,
       );
-      return await new ForceMetagraphRestart(
-        this.sshServices,
-        this.metagraphService,
-        this.globalNetworkService,
-        this.seedlistService,
-        this.logger,
-      ).triggerRestart();
-    }
 
-    this.logger.info(`Checking conditions to metagraph restart`);
-    for (const restartCondition of config.metagraph.restart_conditions) {
-      try {
-        const RestartCondition = conditions[restartCondition];
-        const iRestartCondition: IRestartCondition = new RestartCondition(
+      this.logger.info('Getting valid global network reference source node');
+      await this.globalNetworkService.setReferenceSourceNode();
+
+      this.logger.info('Getting last metagraph snapshot info');
+      await this.metagraphService.setLastMetagraphInfo();
+
+      if (this.forceRestart) {
+        this.logger.info(
+          'Force restart provided, starting the complete restart of metagraph',
+        );
+
+        await this.alertService.createRestartStarted(
+          'ForceMetagraphRestart',
+          'ForceMetagraphRestart ',
+        );
+
+        await new ForceMetagraphRestart(
           this.sshServices,
           this.metagraphService,
           this.globalNetworkService,
           this.seedlistService,
           this.logger,
-        );
+        ).triggerRestart();
 
-        if (await iRestartCondition.shouldRestart()) {
-          this.logger.info(
-            `Condition ${restartCondition} detected, triggering restart...`,
+        await this.closeRemoteAlerts();
+
+        return;
+      }
+
+      this.logger.info(`Checking conditions to metagraph restart`);
+      for (const restartCondition of config.metagraph.restart_conditions) {
+        try {
+          const RestartCondition = conditions[restartCondition];
+          const iRestartCondition: IRestartCondition = new RestartCondition(
+            this.sshServices,
+            this.metagraphService,
+            this.globalNetworkService,
+            this.seedlistService,
+            this.logger,
           );
-          await iRestartCondition.triggerRestart();
-          return;
+          const shoulRestartInfo = await iRestartCondition.shouldRestart();
+          if (shoulRestartInfo.shouldRestart) {
+            await this.alertService.createRestartStarted(
+              shoulRestartInfo.restartType,
+              restartCondition,
+            );
+
+            this.logger.info(
+              `Condition ${restartCondition} detected, triggering restart...`,
+            );
+
+            await iRestartCondition.triggerRestart();
+            await this.closeRemoteAlerts();
+            return;
+          }
+        } catch (e) {
+          this.logger.warn(
+            `Could not get restart condition: ${restartCondition}, skipping`,
+          );
+          continue;
         }
-      } catch (e) {
-        this.logger.warn(
-          `Could not get restart condition: ${restartCondition}, skipping`,
+      }
+
+      this.logger.info(`Metagraph is healthy`);
+      await this.closeRemoteAlerts();
+      return;
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        this.logger.error(
+          `Error when checking metagraph health: ${error.message}`,
         );
-        continue;
+        await this.alertService.createRestartFailed(error.message);
       }
     }
   }
