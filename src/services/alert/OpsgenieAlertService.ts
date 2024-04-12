@@ -33,7 +33,7 @@ export class OpsgenieAlertService implements IAlertService {
       return this.opsgenie_alert_url;
     }
 
-    return '5abb65f3-2a0d-471b-91d1-ba8b54885454';
+    return '';
   }
 
   private buildStartedRestartAlertBody = (
