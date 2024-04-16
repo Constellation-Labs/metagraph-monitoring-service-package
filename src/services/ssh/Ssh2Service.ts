@@ -81,9 +81,9 @@ export class Ssh2Service implements ISshService {
     const conn = await this.connection;
     const commandParsed = this.defaultPath
       ? `cd ${this.defaultPath}
-      ${command}
+      sudo ${command}
       `
-      : command;
+      : `sudo ${command}`;
 
     return new Promise((resolve, reject) => {
       conn.exec(commandParsed, (err, stream) => {
