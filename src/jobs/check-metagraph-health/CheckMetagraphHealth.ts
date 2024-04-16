@@ -1,4 +1,3 @@
-import config from '@config/config.json';
 import IRestartCondition from '@interfaces/restart-conditions/IRestartCondition';
 import IAlertService from '@interfaces/services/alert/IAlertService';
 import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
@@ -6,7 +5,6 @@ import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
-import conditions from '@jobs/check-metagraph-health/restart/conditions';
 
 import ForceMetagraphRestart from './restart/conditions/ForceMetagraphRestart';
 
@@ -17,6 +15,7 @@ export default class CheckMetagraphHealth {
   private seedlistService: ISeedlistService;
   private logger: ILoggerService;
   private alertService: IAlertService;
+  private restartConditionals: IRestartCondition[];
 
   private forceRestart: boolean;
 
@@ -28,6 +27,7 @@ export default class CheckMetagraphHealth {
     logger: ILoggerService,
     alertService: IAlertService,
     forceRestart: boolean,
+    restartConditionals: IRestartCondition[],
   ) {
     this.sshServices = sshServices;
     this.metagraphService = metagraphService;
@@ -36,6 +36,7 @@ export default class CheckMetagraphHealth {
     this.logger = logger;
     this.alertService = alertService;
     this.forceRestart = forceRestart;
+    this.restartConditionals = restartConditionals;
   }
 
   private async closeRemoteAlerts() {
@@ -79,28 +80,20 @@ export default class CheckMetagraphHealth {
       }
 
       this.logger.info(`Checking conditions to metagraph restart`);
-      for (const restartCondition of config.metagraph.restart_conditions) {
+      for (const restartCondition of this.restartConditionals) {
         try {
-          const RestartCondition = conditions[restartCondition];
-          const iRestartCondition: IRestartCondition = new RestartCondition(
-            this.sshServices,
-            this.metagraphService,
-            this.globalNetworkService,
-            this.seedlistService,
-            this.logger,
-          );
-          const shoulRestartInfo = await iRestartCondition.shouldRestart();
+          const shoulRestartInfo = await restartCondition.shouldRestart();
           if (shoulRestartInfo.shouldRestart) {
             await this.alertService.createRestartStarted(
               shoulRestartInfo.restartType,
-              restartCondition,
+              restartCondition.name,
             );
 
             this.logger.info(
               `Condition ${restartCondition} detected, triggering restart...`,
             );
 
-            await iRestartCondition.triggerRestart();
+            await restartCondition.triggerRestart();
             await this.closeRemoteAlerts();
             return;
           }

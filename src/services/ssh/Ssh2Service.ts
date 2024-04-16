@@ -51,7 +51,7 @@ export class Ssh2Service implements ISshService {
     }
   }
 
-  async setConnection() {
+  public async setConnection() {
     await new Promise((resolve, reject) => {
       this.connection
         .connect({
@@ -109,5 +109,9 @@ export class Ssh2Service implements ISshService {
           });
       });
     });
+  }
+
+  public async destroyConnection() {
+    (await this.connection).destroy();
   }
 }

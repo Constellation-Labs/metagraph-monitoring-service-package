@@ -9,4 +9,5 @@ export default interface ISshService {
 
   setConnection(): Promise<void>;
   executeCommand(command: string): Promise<string>;
+  destroyConnection(): Promise<void>;
 }

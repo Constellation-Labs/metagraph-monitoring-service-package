@@ -12,6 +12,7 @@ import ISshService from '@interfaces/services/ssh/ISshService';
 import { FullMetagraph } from '../types/FullMetagraph';
 
 export default class SnapshotsStopped implements IRestartCondition {
+  name = 'Snapshots Stopped';
   sshServices: ISshService[];
   metagraphService: IMetagraphService;
   globalNetwokService: IGlobalNetworkService;

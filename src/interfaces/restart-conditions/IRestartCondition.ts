@@ -9,6 +9,7 @@ export type ShouldRestartInfo = {
   restartType: string;
 };
 export default interface IRestartCondition {
+  name: string;
   sshServices: ISshService[];
   metagraphService: IMetagraphService;
   globalNetwokService: IGlobalNetworkService;

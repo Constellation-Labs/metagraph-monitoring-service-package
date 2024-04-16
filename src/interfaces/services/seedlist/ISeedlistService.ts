@@ -1,4 +1,4 @@
-import { Layers } from '@shared/constants';
+import { AvailableLayers } from '@shared/constants';
 
 import ILoggerService from '../logger/ILoggerService';
 
@@ -9,5 +9,5 @@ export type SeedListInfo = {
 
 export default interface ISeedlistService {
   logger: ILoggerService;
-  buildSeedlistInformation(layer: Layers): Promise<SeedListInfo>;
+  buildSeedlistInformation(layer: AvailableLayers): Promise<SeedListInfo>;
 }

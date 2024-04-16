@@ -13,6 +13,7 @@ import { FullLayer } from '../types/FullLayer';
 import { IndividualNode } from '../types/IndividualNode';
 
 export default class UnhealthyNodes implements IRestartCondition {
+  name = 'Unhealthy Nodes';
   sshServices: ISshService[];
   metagraphService: IMetagraphService;
   globalNetwokService: IGlobalNetworkService;

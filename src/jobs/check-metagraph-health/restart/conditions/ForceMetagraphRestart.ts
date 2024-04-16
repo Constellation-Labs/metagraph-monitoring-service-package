@@ -10,6 +10,7 @@ import ISshService from '@interfaces/services/ssh/ISshService';
 import { FullMetagraph } from '../types/FullMetagraph';
 
 export default class ForceMetagraphRestart implements IRestartCondition {
+  name = 'Force Metagraph Restart';
   sshServices: ISshService[];
   metagraphService: IMetagraphService;
   globalNetwokService: IGlobalNetworkService;
