@@ -12,6 +12,10 @@ This repository hosts the Metagraph Monitoring Service. This service is responsi
 * You should have yarn installed
 * Check the [installation guide](https://classic.yarnpkg.com/lang/en/docs/install)
 
+### User with Password-less Sudo Privileges
+* This application will need to perform several operations, such as creating/writing files and terminating processes. To ensure everything functions correctly, the specified user on the monitoring instance and the nodes must have password-less sudo privileges.
+* Refer to  [this document](https://gcore.com/learning/how-to-disable-password-for-sudo-command/) to learn how to enable password-less sudo for a user. 
+
 ## Installation
 
 After cloning the repository, ensure you fetch all the dependencies. Please make sure you are using Node.js version 18 or higher. To install the dependencies, simply run the following command:
