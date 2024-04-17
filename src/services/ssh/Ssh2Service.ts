@@ -29,14 +29,7 @@ export default class Ssh2Service implements ISshService {
     this.ip = metagraphNode.ip;
     this.username = metagraphNode.username;
     this.logger = logger;
-    const myFilePath = path.join(
-      __dirname,
-      '..',
-      '..',
-      '..',
-      metagraphNode.privateKeyPath,
-    );
-
+    const myFilePath = path.join(process.cwd(), metagraphNode.privateKeyPath);
     this.privateKey = fs.readFileSync(myFilePath);
     this.defaultPath = defaultPath;
     this.metagraphNode = metagraphNode;

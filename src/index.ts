@@ -241,11 +241,10 @@ export default class MonitoringApp {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       try {
-        await this.checkMetagraphHealth();
+        await this.checkMetagraphHealthOnce();
         this.forceRestart = false;
       } catch (error) {
         this.logger.error(`Error when checkMetagraphHealth: ${error}`);
-        continue;
       }
       await new Promise((resolve) =>
         setTimeout(
