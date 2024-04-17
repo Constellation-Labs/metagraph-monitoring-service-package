@@ -8,7 +8,7 @@ import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import { MetagraphNode } from '@interfaces/services/metagraph/IMetagraphService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 
-export class Ssh2Service implements ISshService {
+export default class Ssh2Service implements ISshService {
   private ip: string;
   private username: string;
   private privateKey: Buffer;

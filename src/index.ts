@@ -5,12 +5,12 @@ import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
-import { NoAlertsService } from '@services/alert/NoAlertsService';
+import NoAlertsService from '@services/alert/NoAlertsService';
 import ConstellationGlobalNetworkService from '@services/global-network/ConstellationGlobalNetworkService';
-import { FileLoggerService } from '@services/logger/FileLoggerService';
+import FileLoggerService from '@services/logger/FileLoggerService';
 import ConstellationMetagraphService from '@services/metagraph/ConstellationMetagraphService';
 import NoSeedlistService from '@services/seedlist/NoSeedlistService';
-import { Ssh2Service } from '@services/ssh/Ssh2Service';
+import Ssh2Service from '@services/ssh/Ssh2Service';
 
 import CheckMetagraphHealth from './check-metagraph-health/CheckMetagraphHealth';
 import SnapshotsStopped from './check-metagraph-health/restart/conditions/SnapshotsStopped';

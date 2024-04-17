@@ -7,7 +7,7 @@ import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import { NetworkNames } from '@shared/constants';
 import { MonitoringConfigs } from 'src';
 
-export class OpsgenieAlertService implements IAlertService {
+export default class OpsgenieAlertService implements IAlertService {
   logger: ILoggerService;
   config: MonitoringConfigs;
 

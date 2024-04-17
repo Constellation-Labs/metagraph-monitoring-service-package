@@ -2,7 +2,7 @@ import { createLogger, format, transports } from 'winston';
 
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 
-export class ConsoleLoggerService implements ILoggerService {
+export default class ConsoleLoggerService implements ILoggerService {
   private logger;
 
   constructor() {

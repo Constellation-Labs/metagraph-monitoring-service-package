@@ -2,7 +2,7 @@ import IAlertService from '@interfaces/services/alert/IAlertService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import { MonitoringConfigs } from 'src';
 
-export class NoAlertsService implements IAlertService {
+export default class NoAlertsService implements IAlertService {
   logger: ILoggerService;
   config: MonitoringConfigs;
 

@@ -3,7 +3,7 @@ import DailyRotateFile from 'winston-daily-rotate-file';
 
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 
-export class FileLoggerService implements ILoggerService {
+export default class FileLoggerService implements ILoggerService {
   private logger;
 
   constructor() {
