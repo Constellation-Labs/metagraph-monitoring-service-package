@@ -1,6 +1,6 @@
 {
   "name": "metagraph-monitoring",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Constellation metagraph monitoring service",
   "author": "Marcus Girolneto",
   "email": "marcus.girolneto@gmail.com",
