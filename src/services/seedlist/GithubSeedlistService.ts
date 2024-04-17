@@ -1,17 +1,19 @@
 import axios from 'axios';
 
-import config from '@config/config.json';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import ISeedlistService, {
   SeedListInfo,
 } from '@interfaces/services/seedlist/ISeedlistService';
 import { AvailableLayers } from '@shared/constants';
+import { MonitoringConfigs } from 'src';
 
 export default class GithubSeedlistService implements ISeedlistService {
   logger: ILoggerService;
+  config: MonitoringConfigs;
 
-  constructor(logger: ILoggerService) {
+  constructor(logger: ILoggerService, config: MonitoringConfigs) {
     this.logger = logger;
+    this.config = config;
   }
 
   private async customLogger(message: string) {
@@ -38,13 +40,13 @@ export default class GithubSeedlistService implements ISeedlistService {
   }
 
   private async buildGithubSeedlistInformation(layer: AvailableLayers) {
-    const seedlistInformation = config.metagraph.layers[layer].seedlist;
+    const seedlistInformation = this.config.metagraph.layers[layer].seedlist;
 
     if (!seedlistInformation || Object.keys(seedlistInformation).length === 0) {
       throw Error(`Could not get information of seedlist at layer ${layer}`);
     }
 
-    const { version } = config.metagraph;
+    const { version } = this.config.metagraph;
     const infos = seedlistInformation as object;
     if (
       !Object.keys(infos).includes('base_url') ||

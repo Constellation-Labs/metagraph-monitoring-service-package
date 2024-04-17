@@ -1,5 +1,5 @@
 {
-  "name": "@constellation/metagraph-monitoring-service",
+  "name": "metagraph-monitoring-service",
   "version": "1.0.0",
   "description": "Constellation metagraph monitoring service",
   "author": "Marcus Girolneto",
@@ -7,6 +7,10 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "license": "MIT",
+  "exports": {
+    "./monitoring": "./dist/index.js",
+    "./interfaces": "./dist/interfaces/index.js"
+  },
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build"

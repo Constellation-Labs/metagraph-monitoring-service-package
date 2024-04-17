@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-import config from '@config/config.json';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService, {
   MetagraphNode,
@@ -8,17 +7,20 @@ import IMetagraphService, {
   MetagraphSnapshotInfo,
 } from '@interfaces/services/metagraph/IMetagraphService';
 import { NodeStatuses } from '@shared/constants';
+import { MonitoringConfigs } from 'src';
 
 export default class ConstellationMetagraphService
   implements IMetagraphService
 {
+  config: MonitoringConfigs;
   metagraphId: string;
   nodes: MetagraphNode[];
   networName: string;
   logger: ILoggerService;
   metagraphSnapshotInfo: MetagraphSnapshotInfo;
 
-  constructor(logger: ILoggerService) {
+  constructor(logger: ILoggerService, config: MonitoringConfigs) {
+    this.config = config;
     this.metagraphId = config.metagraph.id;
     this.nodes = config.metagraph.nodes;
     this.networName = config.network.name;

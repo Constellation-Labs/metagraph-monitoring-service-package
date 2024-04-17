@@ -1,14 +1,15 @@
 import axios from 'axios';
 
-import config from '@config/config.json';
 import IAlertService, {
   AlertType,
 } from '@interfaces/services/alert/IAlertService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import { NetworkNames } from '@shared/constants';
+import { MonitoringConfigs } from 'src';
 
 export class OpsgenieAlertService implements IAlertService {
   logger: ILoggerService;
+  config: MonitoringConfigs;
 
   private opsgenie_alert_url: string = 'https://api.opsgenie.com/v2/alerts';
   private opsgenie_api_key: string;
@@ -19,7 +20,8 @@ export class OpsgenieAlertService implements IAlertService {
     testnet: 'env:TestNet',
   };
 
-  constructor(logger: ILoggerService) {
+  constructor(logger: ILoggerService, config: MonitoringConfigs) {
+    this.config = config;
     this.logger = logger;
     this.opsgenie_api_key = '';
   }
@@ -40,16 +42,20 @@ export class OpsgenieAlertService implements IAlertService {
     restartType: string,
     restartReason: string,
   ): object => {
-    const { name: metagraphName, nodes: metagraphNodes, id } = config.metagraph;
-    const { name: networkName } = config.network;
+    const {
+      name: metagraphName,
+      nodes: metagraphNodes,
+      id,
+    } = this.config.metagraph;
+    const { name: networkName } = this.config.network;
 
     const nodesInformation = metagraphNodes
       .map((node, idx) => {
         const nodeInfo = `
       Node ${idx + 1} - IP: ${node.ip}
-      Metagraph L0 - http://${node.ip}:${config.metagraph.layers.ml0.ports.public}/node/info
-      ${!config.metagraph.layers.cl1.ignore_layer ? `Currency L1 - http://${node.ip}:${config.metagraph.layers.cl1.ports.public}/node/info` : ''}
-      ${!config.metagraph.layers.dl1.ignore_layer ? `Data L1 - http://${node.ip}:${config.metagraph.layers.dl1.ports.public}/node/info` : ''}
+      Metagraph L0 - http://${node.ip}:${this.config.metagraph.layers.ml0.ports.public}/node/info
+      ${!this.config.metagraph.layers.cl1.ignore_layer ? `Currency L1 - http://${node.ip}:${this.config.metagraph.layers.cl1.ports.public}/node/info` : ''}
+      ${!this.config.metagraph.layers.dl1.ignore_layer ? `Data L1 - http://${node.ip}:${this.config.metagraph.layers.dl1.ports.public}/node/info` : ''}
       `.trim();
         return nodeInfo;
       })
@@ -81,16 +87,20 @@ export class OpsgenieAlertService implements IAlertService {
   };
 
   private buildFailedRestartAlertBody = (failedReason: string): object => {
-    const { name: metagraphName, nodes: metagraphNodes, id } = config.metagraph;
-    const { name: networkName } = config.network;
+    const {
+      name: metagraphName,
+      nodes: metagraphNodes,
+      id,
+    } = this.config.metagraph;
+    const { name: networkName } = this.config.network;
 
     const nodesInformation = metagraphNodes
       .map((node, idx) => {
         const nodeInfo = `
       Node ${idx + 1} - IP: ${node.ip}
-      Metagraph L0 - http://${node.ip}:${config.metagraph.layers.ml0.ports.public}/node/info
-      ${!config.metagraph.layers.cl1.ignore_layer ? `Currency L1 - http://${node.ip}:${config.metagraph.layers.cl1.ports.public}/node/info` : ''}
-      ${!config.metagraph.layers.dl1.ignore_layer ? `Data L1 - http://${node.ip}:${config.metagraph.layers.dl1.ports.public}/node/info` : ''}
+      Metagraph L0 - http://${node.ip}:${this.config.metagraph.layers.ml0.ports.public}/node/info
+      ${!this.config.metagraph.layers.cl1.ignore_layer ? `Currency L1 - http://${node.ip}:${this.config.metagraph.layers.cl1.ports.public}/node/info` : ''}
+      ${!this.config.metagraph.layers.dl1.ignore_layer ? `Data L1 - http://${node.ip}:${this.config.metagraph.layers.dl1.ports.public}/node/info` : ''}
       `.trim();
         return nodeInfo;
       })
@@ -163,9 +173,9 @@ export class OpsgenieAlertService implements IAlertService {
 
     let alias = '';
     if (alertType === 'RestartStarted') {
-      alias = `${config.metagraph.id}_restart`;
+      alias = `${this.config.metagraph.id}_restart`;
     } else {
-      alias = `${config.metagraph.id}_failure_restarted`;
+      alias = `${this.config.metagraph.id}_failure_restarted`;
     }
 
     try {

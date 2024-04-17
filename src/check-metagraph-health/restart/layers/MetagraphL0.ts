@@ -1,4 +1,3 @@
-import config from '@config/config.json';
 import { NetworkNode } from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService, {
@@ -7,10 +6,12 @@ import IMetagraphService, {
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 import { Layers, NodeStatuses } from '@shared/constants';
+import { MonitoringConfigs } from 'src';
 
 import waitForNode from '../utils/wait-for-node';
 
 export class MetagraphL0 {
+  config: MonitoringConfigs;
   sshService: ISshService;
   metagraphService: IMetagraphService;
   seedlistService: ISeedlistService;
@@ -20,12 +21,14 @@ export class MetagraphL0 {
   referenceSourceNode: NetworkNode;
 
   constructor(
+    config: MonitoringConfigs,
     sshService: ISshService,
     metagraphService: IMetagraphService,
     seedlistService: ISeedlistService,
     logger: ILoggerService,
     referenceSourceNode: NetworkNode,
   ) {
+    this.config = config;
     this.sshService = sshService;
     this.metagraphService = metagraphService;
     this.seedlistService = seedlistService;
@@ -49,7 +52,7 @@ export class MetagraphL0 {
       public: publicPort,
       p2p: p2pPort,
       cli: cliPort,
-    } = config.metagraph.layers.ml0.ports;
+    } = this.config.metagraph.layers.ml0.ports;
     const {
       ip: referenceIp,
       port: referecePort,
@@ -57,7 +60,7 @@ export class MetagraphL0 {
     } = this.referenceSourceNode;
 
     const additionalEnvVariables =
-      config.metagraph.layers.ml0.additional_env_variables
+      this.config.metagraph.layers.ml0.additional_env_variables
         .map((envVariable) => `export ${envVariable}`)
         .join('\n');
 
@@ -71,8 +74,8 @@ export class MetagraphL0 {
     export CL_GLOBAL_L0_PEER_HTTP_HOST=${referenceIp} 
     export CL_GLOBAL_L0_PEER_HTTP_PORT=${referecePort} 
     export CL_GLOBAL_L0_PEER_ID=${referenceId} 
-    export CL_L0_TOKEN_IDENTIFIER=${config.metagraph.id} 
-    export CL_APP_ENV=${config.network.name} 
+    export CL_L0_TOKEN_IDENTIFIER=${this.config.metagraph.id} 
+    export CL_APP_ENV=${this.config.network.name} 
     export CL_COLLATERAL=0
     ${additionalEnvVariables}
     cd metagraph-l0 
@@ -81,6 +84,7 @@ export class MetagraphL0 {
 
   private async startAndJoinValidator(validatorHost: ISshService) {
     const validatorMl0 = new MetagraphL0(
+      this.config,
       validatorHost,
       this.metagraphService,
       this.seedlistService,
@@ -89,6 +93,7 @@ export class MetagraphL0 {
     );
     await validatorMl0.startValidatorNodeL0();
     await waitForNode(
+      this.config,
       validatorMl0.currentNode,
       Layers.ML0,
       NodeStatuses.READY_TO_JOIN,
@@ -168,7 +173,7 @@ export class MetagraphL0 {
 
     const { ip: referenceIp } = referenceMetagraphNode;
     const { public: publicPort, cli: cliPort } =
-      config.metagraph.layers.ml0.ports;
+      this.config.metagraph.layers.ml0.ports;
 
     const nodeInfo = await this.metagraphService.getNodeInfo(
       referenceIp,
@@ -196,6 +201,7 @@ export class MetagraphL0 {
   async startCluster(validatorHosts: ISshService[]) {
     await this.startRollbackNodeL0();
     await waitForNode(
+      this.config,
       this.currentNode,
       Layers.ML0,
       NodeStatuses.READY,

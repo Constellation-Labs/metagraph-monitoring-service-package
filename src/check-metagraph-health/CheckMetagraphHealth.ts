@@ -5,10 +5,12 @@ import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
+import { MonitoringConfigs } from 'src';
 
 import ForceMetagraphRestart from './restart/conditions/ForceMetagraphRestart';
 
 export default class CheckMetagraphHealth {
+  private config: MonitoringConfigs;
   private sshServices: ISshService[];
   private metagraphService: IMetagraphService;
   private globalNetworkService: IGlobalNetworkService;
@@ -20,6 +22,7 @@ export default class CheckMetagraphHealth {
   private forceRestart: boolean;
 
   constructor(
+    config: MonitoringConfigs,
     sshServices: ISshService[],
     metagraphService: IMetagraphService,
     globalNetworkService: IGlobalNetworkService,
@@ -29,6 +32,7 @@ export default class CheckMetagraphHealth {
     forceRestart: boolean,
     restartConditionals: IRestartCondition[],
   ) {
+    this.config = config;
     this.sshServices = sshServices;
     this.metagraphService = metagraphService;
     this.globalNetworkService = globalNetworkService;
@@ -67,6 +71,7 @@ export default class CheckMetagraphHealth {
         );
 
         await new ForceMetagraphRestart(
+          this.config,
           this.sshServices,
           this.metagraphService,
           this.globalNetworkService,

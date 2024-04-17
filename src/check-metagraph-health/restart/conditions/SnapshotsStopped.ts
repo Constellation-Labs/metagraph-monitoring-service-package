@@ -8,11 +8,13 @@ import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
+import { MonitoringConfigs } from 'src';
 
-import { FullMetagraph } from '../types/FullMetagraph';
+import { FullMetagraph } from '../groups/FullMetagraph';
 
 export default class SnapshotsStopped implements IRestartCondition {
   name = 'Snapshots Stopped';
+  config: MonitoringConfigs;
   sshServices: ISshService[];
   metagraphService: IMetagraphService;
   globalNetwokService: IGlobalNetworkService;
@@ -22,12 +24,14 @@ export default class SnapshotsStopped implements IRestartCondition {
   private MAX_MINUTES_WITHOUT_NEW_SNAPSHOTS = 4;
 
   constructor(
+    config: MonitoringConfigs,
     sshServices: ISshService[],
     metagraphService: IMetagraphService,
     globalNetwokService: IGlobalNetworkService,
     seedlistService: ISeedlistService,
     logger: ILoggerService,
   ) {
+    this.config = config;
     this.metagraphService = metagraphService;
     this.sshServices = sshServices;
     this.globalNetwokService = globalNetwokService;
@@ -69,6 +73,7 @@ export default class SnapshotsStopped implements IRestartCondition {
 
   async triggerRestart(): Promise<void> {
     const fullMetagraph = new FullMetagraph(
+      this.config,
       this.sshServices,
       this.metagraphService,
       this.seedlistService,

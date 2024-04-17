@@ -1,4 +1,3 @@
-import config from '@config/config.json';
 import { NetworkNode } from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService, {
@@ -7,6 +6,7 @@ import IMetagraphService, {
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 import { AvailableLayers, Layers, NodeStatuses } from '@shared/constants';
+import { MonitoringConfigs } from 'src';
 
 import { CurrencyL1 } from '../layers/CurrencyL1';
 import { DataL1 } from '../layers/DataL1';
@@ -16,6 +16,7 @@ import saveCurrentLogs from '../utils/save-current-logs';
 import waitForNode from '../utils/wait-for-node';
 
 export class IndividualNode {
+  private config: MonitoringConfigs;
   private sshService: ISshService;
   private metagraphService: IMetagraphService;
   private seedlistService: ISeedlistService;
@@ -26,6 +27,7 @@ export class IndividualNode {
   layer: AvailableLayers;
 
   constructor(
+    config: MonitoringConfigs,
     sshService: ISshService,
     metagraphService: IMetagraphService,
     seedlistService: ISeedlistService,
@@ -34,6 +36,7 @@ export class IndividualNode {
     referenceSourceNode: NetworkNode,
     layer: AvailableLayers,
   ) {
+    this.config = config;
     this.sshService = sshService;
     this.metagraphService = metagraphService;
     this.seedlistService = seedlistService;
@@ -54,7 +57,7 @@ export class IndividualNode {
 
     await killCurrentExecution(
       this.sshService,
-      config.metagraph.layers[this.layer].ports.public,
+      this.config.metagraph.layers[this.layer].ports.public,
     );
 
     this.customLogger(
@@ -80,6 +83,7 @@ export class IndividualNode {
 
     if (this.layer === Layers.ML0) {
       const metagraphL0 = new MetagraphL0(
+        this.config,
         this.sshService,
         this.metagraphService,
         this.seedlistService,
@@ -88,6 +92,7 @@ export class IndividualNode {
       );
       await metagraphL0.startValidatorNodeL0();
       await waitForNode(
+        this.config,
         metagraphL0.currentNode,
         this.layer,
         NodeStatuses.READY_TO_JOIN,
@@ -99,6 +104,7 @@ export class IndividualNode {
 
     if (this.layer === Layers.CL1) {
       const currencyL1 = new CurrencyL1(
+        this.config,
         this.sshService,
         this.metagraphService,
         this.seedlistService,
@@ -108,6 +114,7 @@ export class IndividualNode {
       );
       await currencyL1.startValidatorNodeCl1();
       await waitForNode(
+        this.config,
         currencyL1.currentNode,
         this.layer,
         NodeStatuses.READY_TO_JOIN,
@@ -119,6 +126,7 @@ export class IndividualNode {
 
     if (this.layer === Layers.DL1) {
       const dataL1 = new DataL1(
+        this.config,
         this.sshService,
         this.metagraphService,
         this.seedlistService,
@@ -128,6 +136,7 @@ export class IndividualNode {
       );
       await dataL1.startValidatorNodeDl1();
       await waitForNode(
+        this.config,
         dataL1.currentNode,
         this.layer,
         NodeStatuses.READY_TO_JOIN,

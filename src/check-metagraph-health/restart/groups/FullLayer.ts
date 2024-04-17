@@ -1,10 +1,10 @@
-import config from '@config/config.json';
 import { NetworkNode } from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 import { AvailableLayers, Layers } from '@shared/constants';
+import { MonitoringConfigs } from 'src';
 
 import { FullMetagraph } from './FullMetagraph';
 import { CurrencyL1 } from '../layers/CurrencyL1';
@@ -13,6 +13,7 @@ import killCurrentExecution from '../utils/kill-current-execution';
 import saveCurrentLogs from '../utils/save-current-logs';
 
 export class FullLayer {
+  private config: MonitoringConfigs;
   private sshServices: ISshService[];
   private metagraphService: IMetagraphService;
   private seedlistService: ISeedlistService;
@@ -22,6 +23,7 @@ export class FullLayer {
   layer: AvailableLayers;
 
   constructor(
+    config: MonitoringConfigs,
     sshServices: ISshService[],
     metagraphService: IMetagraphService,
     seedlistService: ISeedlistService,
@@ -29,6 +31,7 @@ export class FullLayer {
     referenceSourceNode: NetworkNode,
     layer: AvailableLayers,
   ) {
+    this.config = config;
     this.sshServices = sshServices;
     this.seedlistService = seedlistService;
     this.metagraphService = metagraphService;
@@ -50,7 +53,7 @@ export class FullLayer {
 
       await killCurrentExecution(
         sshService,
-        config.metagraph.layers[this.layer].ports.public,
+        this.config.metagraph.layers[this.layer].ports.public,
       );
 
       this.customLogger(
@@ -90,7 +93,7 @@ export class FullLayer {
     await this.killProcesses();
     await this.moveLogs();
 
-    const { nodes: metagraphNodes } = config.metagraph;
+    const { nodes: metagraphNodes } = this.config.metagraph;
     const rollbackHost = this.sshServices.find((it) => it.nodeNumber === 1);
     if (!rollbackHost) {
       throw Error(
@@ -112,6 +115,7 @@ export class FullLayer {
         `All layer ${this.layer} is offline, triggering a full restart`,
       );
       const fullCluster = new FullMetagraph(
+        this.config,
         this.sshServices,
         this.metagraphService,
         this.seedlistService,
@@ -126,6 +130,7 @@ export class FullLayer {
         `All layer ${this.layer} is offline, triggering a layer restart`,
       );
       const currencyL1 = new CurrencyL1(
+        this.config,
         rollbackHost,
         this.metagraphService,
         this.seedlistService,
@@ -141,6 +146,7 @@ export class FullLayer {
         `All layer ${this.layer} is offline, triggering a layer restart`,
       );
       const dataL1 = new DataL1(
+        this.config,
         rollbackHost,
         this.metagraphService,
         this.seedlistService,

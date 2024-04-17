@@ -6,11 +6,13 @@ import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
+import { MonitoringConfigs } from 'src';
 
-import { FullMetagraph } from '../types/FullMetagraph';
+import { FullMetagraph } from '../groups/FullMetagraph';
 
 export default class ForceMetagraphRestart implements IRestartCondition {
   name = 'Force Metagraph Restart';
+  config: MonitoringConfigs;
   sshServices: ISshService[];
   metagraphService: IMetagraphService;
   globalNetwokService: IGlobalNetworkService;
@@ -18,12 +20,14 @@ export default class ForceMetagraphRestart implements IRestartCondition {
   logger: ILoggerService;
 
   constructor(
+    config: MonitoringConfigs,
     sshServices: ISshService[],
     metagraphService: IMetagraphService,
     globalNetwokService: IGlobalNetworkService,
     seedlistService: ISeedlistService,
     logger: ILoggerService,
   ) {
+    this.config = config;
     this.sshServices = sshServices;
     this.metagraphService = metagraphService;
     this.globalNetwokService = globalNetwokService;
@@ -42,6 +46,7 @@ export default class ForceMetagraphRestart implements IRestartCondition {
 
   async triggerRestart(): Promise<void> {
     const fullMetagraph = new FullMetagraph(
+      this.config,
       this.sshServices,
       this.metagraphService,
       this.seedlistService,

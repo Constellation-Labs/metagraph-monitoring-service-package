@@ -1,3 +1,5 @@
+import { MonitoringConfigs } from 'src';
+
 import ILoggerService from '../logger/ILoggerService';
 
 export type MetagraphNode = {
@@ -26,6 +28,7 @@ export type MetagraphNodeInfo = {
 };
 
 export default interface IMetagraphService {
+  config: MonitoringConfigs;
   metagraphId: string;
   nodes: MetagraphNode[];
   networName: string;

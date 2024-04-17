@@ -17,5 +17,6 @@
       "@shared/*": ["src/shared/*"],
       "@config/*": ["config/*"]
     }
-  }
+  },
+  "include": ["src/**/*"]
 }

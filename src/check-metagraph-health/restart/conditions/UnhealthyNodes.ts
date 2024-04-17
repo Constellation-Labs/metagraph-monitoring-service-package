@@ -7,13 +7,14 @@ import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService'
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 import { Layers } from '@shared/constants';
-import config from 'config/config.json';
+import { MonitoringConfigs } from 'src';
 
-import { FullLayer } from '../types/FullLayer';
-import { IndividualNode } from '../types/IndividualNode';
+import { FullLayer } from '../groups/FullLayer';
+import { IndividualNode } from '../groups/IndividualNode';
 
 export default class UnhealthyNodes implements IRestartCondition {
   name = 'Unhealthy Nodes';
+  config: MonitoringConfigs;
   sshServices: ISshService[];
   metagraphService: IMetagraphService;
   globalNetwokService: IGlobalNetworkService;
@@ -27,12 +28,14 @@ export default class UnhealthyNodes implements IRestartCondition {
   private dataL1NUnhealthyNodes: ISshService[] = [];
 
   constructor(
+    config: MonitoringConfigs,
     sshServices: ISshService[],
     metagraphService: IMetagraphService,
     globalNetwokService: IGlobalNetworkService,
     seedlistService: ISeedlistService,
     logger: ILoggerService,
   ) {
+    this.config = config;
     this.sshServices = sshServices;
     this.metagraphService = metagraphService;
     this.globalNetwokService = globalNetwokService;
@@ -46,9 +49,11 @@ export default class UnhealthyNodes implements IRestartCondition {
 
   private async tryRestartFullLayer() {
     if (
-      this.metagraphL0UnhealthyNodes.length === config.metagraph.nodes.length
+      this.metagraphL0UnhealthyNodes.length ===
+      this.config.metagraph.nodes.length
     ) {
       await new FullLayer(
+        this.config,
         this.sshServices,
         this.metagraphService,
         this.seedlistService,
@@ -60,9 +65,11 @@ export default class UnhealthyNodes implements IRestartCondition {
       this.layerRestarted = true;
     }
     if (
-      this.currencyL1UnhealthyNodes.length === config.metagraph.nodes.length
+      this.currencyL1UnhealthyNodes.length ===
+      this.config.metagraph.nodes.length
     ) {
       await new FullLayer(
+        this.config,
         this.sshServices,
         this.metagraphService,
         this.seedlistService,
@@ -73,8 +80,11 @@ export default class UnhealthyNodes implements IRestartCondition {
 
       this.layerRestarted = true;
     }
-    if (this.dataL1NUnhealthyNodes.length === config.metagraph.nodes.length) {
+    if (
+      this.dataL1NUnhealthyNodes.length === this.config.metagraph.nodes.length
+    ) {
       await new FullLayer(
+        this.config,
         this.sshServices,
         this.metagraphService,
         this.seedlistService,
@@ -103,6 +113,7 @@ export default class UnhealthyNodes implements IRestartCondition {
       }
       for (const metagraphL0 of this.metagraphL0UnhealthyNodes) {
         await new IndividualNode(
+          this.config,
           metagraphL0,
           this.metagraphService,
           this.seedlistService,
@@ -127,6 +138,7 @@ export default class UnhealthyNodes implements IRestartCondition {
       }
       for (const currencyL1 of this.currencyL1UnhealthyNodes) {
         await new IndividualNode(
+          this.config,
           currencyL1,
           this.metagraphService,
           this.seedlistService,
@@ -152,6 +164,7 @@ export default class UnhealthyNodes implements IRestartCondition {
       }
       for (const dataL1 of this.dataL1NUnhealthyNodes) {
         await new IndividualNode(
+          this.config,
           dataL1,
           this.metagraphService,
           this.seedlistService,
@@ -172,29 +185,29 @@ export default class UnhealthyNodes implements IRestartCondition {
 
       const ml0NodeIsHealthy = await this.metagraphService.checkIfNodeIsHealthy(
         metagraphNode.ip,
-        config.metagraph.layers.ml0.ports.public,
+        this.config.metagraph.layers.ml0.ports.public,
       );
       if (!ml0NodeIsHealthy) {
         this.metagraphL0UnhealthyNodes.push(sshService);
       }
 
-      if (!config.metagraph.layers.cl1.ignore_layer) {
+      if (!this.config.metagraph.layers.cl1.ignore_layer) {
         this.customLogger(`[CL1] Checking node ${metagraphNode.ip}`);
         const cl1NodeIsHealthy =
           await this.metagraphService.checkIfNodeIsHealthy(
             metagraphNode.ip,
-            config.metagraph.layers.cl1.ports.public,
+            this.config.metagraph.layers.cl1.ports.public,
           );
         if (!cl1NodeIsHealthy) {
           this.currencyL1UnhealthyNodes.push(sshService);
         }
       }
-      if (!config.metagraph.layers.dl1.ignore_layer) {
+      if (!this.config.metagraph.layers.dl1.ignore_layer) {
         this.customLogger(`[DL1] Checking node ${metagraphNode.ip}`);
         const dl1NodeIsHealthy =
           await this.metagraphService.checkIfNodeIsHealthy(
             metagraphNode.ip,
-            config.metagraph.layers.dl1!.ports!.public,
+            this.config.metagraph.layers.dl1!.ports!.public,
           );
 
         if (!dl1NodeIsHealthy) {

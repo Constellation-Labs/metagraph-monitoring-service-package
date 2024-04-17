@@ -1,4 +1,3 @@
-import config from '@config/config.json';
 import { NetworkNode } from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService, {
@@ -7,10 +6,12 @@ import IMetagraphService, {
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 import { Layers, NodeStatuses } from '@shared/constants';
+import { MonitoringConfigs } from 'src';
 
 import waitForNode from '../utils/wait-for-node';
 
-export class DataL1 {
+export class CurrencyL1 {
+  config: MonitoringConfigs;
   sshService: ISshService;
   metagraphService: IMetagraphService;
   seedlistService: ISeedlistService;
@@ -21,6 +22,7 @@ export class DataL1 {
   referenceSourceNode: NetworkNode;
 
   constructor(
+    config: MonitoringConfigs,
     sshService: ISshService,
     metagraphService: IMetagraphService,
     seedlistService: ISeedlistService,
@@ -28,6 +30,7 @@ export class DataL1 {
     referenceMetagraphL0Node: MetagraphNode,
     referenceSourceNode: NetworkNode,
   ) {
+    this.config = config;
     this.sshService = sshService;
     this.metagraphService = metagraphService;
     this.seedlistService = seedlistService;
@@ -39,7 +42,7 @@ export class DataL1 {
   }
 
   private async customLogger(message: string) {
-    this.logger.info(`[Data L1] ${message}`);
+    this.logger.info(`[Currency L1] ${message}`);
   }
 
   private async buildNodeEnvVariables() {
@@ -53,7 +56,7 @@ export class DataL1 {
       public: publicPort,
       p2p: p2pPort,
       cli: cliPort,
-    } = config.metagraph.layers.dl1.ports;
+    } = this.config.metagraph.layers.cl1.ports;
 
     const {
       ip: referenceGl0Ip,
@@ -62,21 +65,14 @@ export class DataL1 {
     } = this.referenceSourceNode;
 
     const { ip: referenceMl0Ip } = this.referenceMetagraphL0Node;
-
     const metagraphL0ReferenceNodeInfo =
       await this.metagraphService.getNodeInfo(
         referenceMl0Ip,
-        config.metagraph.layers.ml0.ports.public,
+        this.config.metagraph.layers.ml0.ports.public,
       );
-
     if (!metagraphL0ReferenceNodeInfo) {
       throw new Error(`Could not get reference metagraph l0 node`);
     }
-
-    const additionalEnvVariables =
-      config.metagraph.layers.dl1.additional_env_variables
-        .map((envVariable) => `export ${envVariable}`)
-        .join('\n');
 
     return `
     export CL_KEYSTORE="${keyStore}" 
@@ -91,16 +87,16 @@ export class DataL1 {
     export CL_L0_PEER_HTTP_HOST=${metagraphL0ReferenceNodeInfo.host} 
     export CL_L0_PEER_HTTP_PORT=${metagraphL0ReferenceNodeInfo.publicPort} 
     export CL_L0_PEER_ID=${metagraphL0ReferenceNodeInfo.id} 
-    export CL_L0_TOKEN_IDENTIFIER=${config.metagraph.id} 
-    export CL_APP_ENV=${config.network.name} 
-    export CL_COLLATERAL=0
-    ${additionalEnvVariables}
-    cd data-l1 
+    export CL_L0_TOKEN_IDENTIFIER=${this.config.metagraph.id} 
+    export CL_APP_ENV=${this.config.network.name} 
+    export CL_COLLATERAL=0 
+    cd currency-l1 
     `;
   }
 
   private async startAndJoinValidator(validatorHost: ISshService) {
-    const validatorDl1 = new DataL1(
+    const validatorCl1 = new CurrencyL1(
+      this.config,
       validatorHost,
       this.metagraphService,
       this.seedlistService,
@@ -108,14 +104,15 @@ export class DataL1 {
       this.currentNode,
       this.referenceSourceNode,
     );
-    await validatorDl1.startValidatorNodeDl1();
+    await validatorCl1.startValidatorNodeCl1();
     await waitForNode(
-      validatorDl1.currentNode,
-      Layers.DL1,
+      this.config,
+      validatorCl1.currentNode,
+      Layers.CL1,
       NodeStatuses.READY_TO_JOIN,
       this.logger,
     );
-    await validatorDl1.joinNodeToCluster(this.currentNode);
+    await validatorCl1.joinNodeToCluster(this.currentNode);
   }
 
   private async updateSeedlist(
@@ -129,20 +126,20 @@ export class DataL1 {
 
     this.customLogger(`Updating seedlist on node`);
     const command = `
-    cd data-l1
+    cd currency-l1
     wget -O ${seedlistFileName} ${seedlistUrl}
     `;
 
     await this.sshService.executeCommand(command);
   }
 
-  async startInitialValidatorDl1() {
+  async startInitialValidatorCl1() {
     this.customLogger(
       `Starting node ${this.currentNode.ip} as initial validator`,
     );
 
     const { url, fileName } =
-      await this.seedlistService.buildSeedlistInformation(Layers.DL1);
+      await this.seedlistService.buildSeedlistInformation(Layers.CL1);
 
     const command = await this.buildNodeEnvVariables();
 
@@ -151,22 +148,23 @@ export class DataL1 {
     const parsedCommand = ` ${command} 
     ${
       url
-        ? `nohup java -jar data-l1.jar run-initial-validator --ip ${this.currentNode.ip} --seedlist ${fileName} > data-l1-startup.log 2>&1 &`
-        : `nohup java -jar data-l1.jar run-initial-validator --ip ${this.currentNode.ip} > data-l1-startup.log 2>&1 &`
+        ? `nohup java -jar currency-l1.jar run-initial-validator --ip ${this.currentNode.ip} --seedlist ${fileName} > currency-l1-startup.log 2>&1 &`
+        : `nohup java -jar currency-l1.jar run-initial-validator --ip ${this.currentNode.ip} > currency-l1-startup.log 2>&1 &`
     }
     `;
 
     await this.sshService.executeCommand(parsedCommand);
+
     this.customLogger(
       `Finished ${this.currentNode.ip} node as initial validator`,
     );
   }
 
-  async startValidatorNodeDl1() {
+  async startValidatorNodeCl1() {
     this.customLogger(`Starting node ${this.currentNode.ip} as validator`);
 
     const { url, fileName } =
-      await this.seedlistService.buildSeedlistInformation(Layers.DL1);
+      await this.seedlistService.buildSeedlistInformation(Layers.CL1);
 
     const command = await this.buildNodeEnvVariables();
 
@@ -175,8 +173,8 @@ export class DataL1 {
     const parsedCommand = ` ${command}
     ${
       url
-        ? `nohup java -jar data-l1.jar run-validator --ip ${this.currentNode.ip} --seedlist ${fileName} > data-l1-startup.log 2>&1 &`
-        : `nohup java -jar data-l1.jar run-validator --ip ${this.currentNode.ip} > data-l1-startup.log 2>&1 &`
+        ? `nohup java -jar currency-l1.jar run-validator --ip ${this.currentNode.ip} --seedlist ${fileName} > currency-l1-startup.log 2>&1 &`
+        : `nohup java -jar currency-l1.jar run-validator --ip ${this.currentNode.ip} > currency-l1-startup.log 2>&1 &`
     }
     `;
 
@@ -192,20 +190,21 @@ export class DataL1 {
 
     const { ip: referenceIp } = referenceMetagraphNode;
     const { public: publicPort, cli: cliPort } =
-      config.metagraph.layers.dl1.ports;
+      this.config.metagraph.layers.cl1.ports;
 
     const nodeInfo = await this.metagraphService.getNodeInfo(
       referenceIp,
       publicPort,
     );
+
     if (!nodeInfo) {
       throw new Error(
-        `Could not get node info of node ${referenceIp} on layer dl1`,
+        `Could not get node info of node ${referenceIp} on layer cl1`,
       );
     }
 
     const command = `
-    cd data-l1 
+    cd currency-l1 
     curl -v -X POST http://localhost:${cliPort}/cluster/join -H "Content-type: application/json" -d '{ "id":"${nodeInfo.id}", "ip": "${nodeInfo.host}", "p2pPort": ${nodeInfo.p2pPort} }'`;
 
     this.customLogger(`Joining to node ${JSON.stringify(nodeInfo)}`);
@@ -218,10 +217,11 @@ export class DataL1 {
   }
 
   async startCluster(validatorHosts: ISshService[]) {
-    await this.startInitialValidatorDl1();
+    await this.startInitialValidatorCl1();
     await waitForNode(
+      this.config,
       this.currentNode,
-      Layers.DL1,
+      Layers.CL1,
       NodeStatuses.READY,
       this.logger,
     );

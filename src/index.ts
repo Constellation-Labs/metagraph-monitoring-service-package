@@ -5,15 +5,16 @@ import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
-import CheckMetagraphHealth from '@jobs/check-metagraph-health/CheckMetagraphHealth';
-import SnapshotsStopped from '@jobs/check-metagraph-health/restart/conditions/SnapshotsStopped';
-import UnhealthyNodes from '@jobs/check-metagraph-health/restart/conditions/UnhealthyNodes';
 import { NoAlertsService } from '@services/alert/NoAlertsService';
 import ConstellationGlobalNetworkService from '@services/global-network/ConstellationGlobalNetworkService';
 import { FileLoggerService } from '@services/logger/FileLoggerService';
 import ConstellationMetagraphService from '@services/metagraph/ConstellationMetagraphService';
 import NoSeedlistService from '@services/seedlist/NoSeedlistService';
 import { Ssh2Service } from '@services/ssh/Ssh2Service';
+
+import CheckMetagraphHealth from './check-metagraph-health/CheckMetagraphHealth';
+import SnapshotsStopped from './check-metagraph-health/restart/conditions/SnapshotsStopped';
+import UnhealthyNodes from './check-metagraph-health/restart/conditions/UnhealthyNodes';
 
 type MetagraphNodesProps = {
   ip: string;
@@ -41,6 +42,7 @@ type MetagraphProps = {
   id: string;
   name: string;
   version: string;
+  default_restart_conditions: string[];
   layers: {
     ml0: MetagraphLayerProps;
     cl1: MetagraphLayerProps;
@@ -60,14 +62,14 @@ type NetworkProps = {
   nodes: NetworkNode[];
 };
 
-type Configs = {
+export type MonitoringConfigs = {
   metagraph: MetagraphProps;
   network: NetworkProps;
   check_healthy_interval_in_minutes: number;
 };
 
 export default class MonitoringApp {
-  private configs: Configs;
+  private configs: MonitoringConfigs;
   private sshServices: ISshService[];
   private metagraphService: IMetagraphService;
   private globalNetworkService: IGlobalNetworkService;
@@ -78,7 +80,7 @@ export default class MonitoringApp {
   private restartConditions: IRestartCondition[];
 
   constructor(
-    configs: Configs,
+    configs: MonitoringConfigs,
     forceRestart: boolean = false,
     services?: {
       logger?: ILoggerService;
@@ -87,8 +89,8 @@ export default class MonitoringApp {
       globalNetworkService?: IGlobalNetworkService;
       seedlistService?: ISeedlistService;
       alertService?: IAlertService;
-      restartConditions?: IRestartCondition[];
     },
+    customRestartConditions?: IRestartCondition[],
   ) {
     this.configs = configs;
 
@@ -101,7 +103,7 @@ export default class MonitoringApp {
 
     this.metagraphService =
       services?.metagraphService ??
-      new ConstellationMetagraphService(this.logger);
+      new ConstellationMetagraphService(this.logger, this.configs);
 
     this.globalNetworkService =
       services?.globalNetworkService ??
@@ -115,24 +117,11 @@ export default class MonitoringApp {
       services?.seedlistService ?? new NoSeedlistService(this.logger);
 
     this.alertService =
-      services?.alertService ?? new NoAlertsService(this.logger);
+      services?.alertService ?? new NoAlertsService(this.logger, this.configs);
 
-    this.restartConditions = services?.restartConditions ?? [
-      new SnapshotsStopped(
-        this.sshServices,
-        this.metagraphService,
-        this.globalNetworkService,
-        this.seedlistService,
-        this.logger,
-      ),
-      new UnhealthyNodes(
-        this.sshServices,
-        this.metagraphService,
-        this.globalNetworkService,
-        this.seedlistService,
-        this.logger,
-      ),
-    ];
+    this.restartConditions = this.buildRestartConditions(
+      customRestartConditions,
+    );
   }
 
   private buildSshServices(logger: ILoggerService): ISshService[] {
@@ -149,6 +138,43 @@ export default class MonitoringApp {
     }
 
     return sshServices;
+  }
+
+  private buildRestartConditions(
+    customRestartConditions?: IRestartCondition[],
+  ): IRestartCondition[] {
+    const restartConditions = customRestartConditions
+      ? [...customRestartConditions]
+      : [];
+
+    const { default_restart_conditions } = this.configs.metagraph;
+    if (default_restart_conditions.includes('SnapshotsStopped')) {
+      restartConditions.push(
+        new SnapshotsStopped(
+          this.configs,
+          this.sshServices,
+          this.metagraphService,
+          this.globalNetworkService,
+          this.seedlistService,
+          this.logger,
+        ),
+      );
+    }
+
+    if (default_restart_conditions.includes('UnhealthyNodes')) {
+      restartConditions.push(
+        new UnhealthyNodes(
+          this.configs,
+          this.sshServices,
+          this.metagraphService,
+          this.globalNetworkService,
+          this.seedlistService,
+          this.logger,
+        ),
+      );
+    }
+
+    return restartConditions;
   }
 
   private async initializeSshConnections() {
@@ -171,6 +197,7 @@ export default class MonitoringApp {
     try {
       await this.initializeSshConnections();
       const checkMetagraphHealth = new CheckMetagraphHealth(
+        this.configs,
         this.sshServices,
         this.metagraphService,
         this.globalNetworkService,
