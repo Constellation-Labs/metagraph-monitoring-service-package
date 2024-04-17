@@ -215,13 +215,3 @@ export default class MonitoringApp {
     }
   }
 }
-
-export type {
-  IRestartCondition,
-  IAlertService,
-  IGlobalNetworkService,
-  ILoggerService,
-  IMetagraphService,
-  ISeedlistService,
-  ISshService,
-};
