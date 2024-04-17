@@ -20,9 +20,7 @@
     }
   },
   "scripts": {
-    "build": "tsup",
-    "link": "npm link",
-    "prepare": "npm run build"
+    "build": "tsup"
   },
   "author": "Marcus Girolneto <marcus.girolneto@gmail.com>",
   "homepage": "https://github.com/Constellation-Labs/metagraph-monitoring-service#readme",

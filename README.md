@@ -78,15 +78,3 @@ We offer a suite of interfaces that allow you to customize the restart flow for 
     *   **`GithubSeedlistService`**: Retrieves seedlist information from a GitHub release.
 
 *   **`ISshService`**: This interface is for choosing your SSH communication tool with the nodes. The default implementation uses the `ssh2` library in NodeJS, available in `Ssh2Service`.
- 
-## Running the service
-This service can be executed in several modes using Yarn commands. Each mode is designed for specific use cases:
-*   **`yarn start`**: Starts the application in the background. This command will generate the following files:  
-    *   **`output.log`**: Captures the startup log.
-    *   **`pidfile.txt`**: Stores the Process ID (PID) of the background process.
-    *   **`logs/*`**: Contains all logs from the executions.
-*  **`yarn dev`**: Launches the application in the foreground and attaches it to the current terminal. All logs will be directly printed to this terminal.
-    
-*   **`yarn force-restart`**: Similar to `yarn start`, but it initiates with a forced restart of your metagraph. This action triggers a complete restart of the metagraph during the first iteration of the task.
-    
-*   **`yarn force-restart-dev`**: Combines the features of `yarn force-restart` with the logging behavior of `yarn dev`. It forces a restart of the metagraph and prints all logs to the console, with the process remaining attached to the current terminal.
