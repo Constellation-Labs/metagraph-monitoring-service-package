@@ -215,7 +215,7 @@ export default class MonitoringApp {
     this.forceRestart = value;
   }
 
-  public async checkMetagraphHealth() {
+  public async checkMetagraphHealthOnce() {
     try {
       await this.initializeSshConnections();
       const checkMetagraphHealth = new CheckMetagraphHealth(
@@ -234,6 +234,25 @@ export default class MonitoringApp {
       this.logger.error(`Error when executing checkMetagraphHealth: ${e}`);
     } finally {
       await this.finishSshConnections();
+    }
+  }
+
+  public async checkMetagraphHealth() {
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      try {
+        await this.checkMetagraphHealth();
+        this.forceRestart = false;
+      } catch (error) {
+        this.logger.error(`Error when checkMetagraphHealth: ${error}`);
+        continue;
+      }
+      await new Promise((resolve) =>
+        setTimeout(
+          resolve,
+          this.configs.check_healthy_interval_in_minutes * 60 * 1000,
+        ),
+      );
     }
   }
 }
