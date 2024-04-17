@@ -1,21 +1,9 @@
-import NoAlertsService from './alert/NoAlertsService';
-import OpsgenieAlertService from './alert/OpsgenieAlertService';
-import ConstellationGlobalNetworkService from './global-network/ConstellationGlobalNetworkService';
-import ConsoleLoggerService from './logger/ConsoleLoggerService';
-import FileLoggerService from './logger/FileLoggerService';
-import ConstellationMetagraphService from './metagraph/ConstellationMetagraphService';
-import GithubSeedlistService from './seedlist/GithubSeedlistService';
-import NoSeedlistService from './seedlist/NoSeedlistService';
-import Ssh2Service from './ssh/Ssh2Service';
-
-export = {
-  NoAlertsService,
-  OpsgenieAlertService,
-  ConstellationGlobalNetworkService,
-  ConsoleLoggerService,
-  FileLoggerService,
-  ConstellationMetagraphService,
-  GithubSeedlistService,
-  NoSeedlistService,
-  Ssh2Service,
-};
+export { default as NoAlertsService } from './alert/NoAlertsService';
+export { default as OpsgenieAlertService } from './alert/OpsgenieAlertService';
+export { default as ConstellationGlobalNetworkService } from './global-network/ConstellationGlobalNetworkService';
+export { default as ConsoleLoggerService } from './logger/ConsoleLoggerService';
+export { default as FileLoggerService } from './logger/FileLoggerService';
+export { default as ConstellationMetagraphService } from './metagraph/ConstellationMetagraphService';
+export { default as GithubSeedlistService } from './seedlist/GithubSeedlistService';
+export { default as NoSeedlistService } from './seedlist/NoSeedlistService';
+export { default as Ssh2Service } from './ssh/Ssh2Service';

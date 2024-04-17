@@ -1,6 +1,6 @@
 {
   "name": "constellation-metagraph-monitoring-service",
-  "version": "1.0.0",
+  "version": "2.15.0",
   "description": "Constellation metagraph monitoring service",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -25,6 +25,14 @@
     "prepare": "npm run build"
   },
   "author": "Marcus Girolneto <marcus.girolneto@gmail.com>",
+  "homepage": "https://github.com/Constellation-Labs/metagraph-monitoring-service#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Constellation-Labs/metagraph-monitoring-service.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Constellation-Labs/metagraph-monitoring-service/issues"
+  },
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.12.7",

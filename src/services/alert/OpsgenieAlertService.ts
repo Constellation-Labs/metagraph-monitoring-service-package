@@ -20,22 +20,18 @@ export default class OpsgenieAlertService implements IAlertService {
     testnet: 'env:TestNet',
   };
 
-  constructor(logger: ILoggerService, config: MonitoringConfigs) {
+  constructor(
+    logger: ILoggerService,
+    config: MonitoringConfigs,
+    opsgenieAlertKey: string,
+  ) {
     this.config = config;
     this.logger = logger;
-    this.opsgenie_api_key = '';
+    this.opsgenie_api_key = opsgenieAlertKey;
   }
 
   private customLog(message: string) {
     this.logger.info(`[OpsgenieAlertService] ${message}`);
-  }
-
-  private async getOpsgenieApiKey(): Promise<string> {
-    if (this.opsgenie_api_key) {
-      return this.opsgenie_alert_url;
-    }
-
-    return '';
   }
 
   private buildStartedRestartAlertBody = (
@@ -133,7 +129,7 @@ export default class OpsgenieAlertService implements IAlertService {
       await axios.post(this.opsgenie_alert_url, body, {
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `GenieKey ${await this.getOpsgenieApiKey()}`,
+          Authorization: `GenieKey ${await this.opsgenie_api_key}`,
         },
       });
     } catch (e) {
@@ -184,7 +180,7 @@ export default class OpsgenieAlertService implements IAlertService {
         {
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `GenieKey ${await this.getOpsgenieApiKey()}`,
+            Authorization: `GenieKey ${await this.opsgenie_api_key}`,
           },
         },
       );
@@ -200,7 +196,7 @@ export default class OpsgenieAlertService implements IAlertService {
         {
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `GenieKey ${await this.getOpsgenieApiKey()}`,
+            Authorization: `GenieKey ${await this.opsgenie_api_key}`,
           },
         },
       );
