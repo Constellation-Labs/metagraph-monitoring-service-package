@@ -7,10 +7,12 @@ import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 import NoAlertsService from '@services/alert/NoAlertsService';
 import ConstellationGlobalNetworkService from '@services/global-network/ConstellationGlobalNetworkService';
+import ConsoleLoggerService from '@services/logger/ConsoleLoggerService';
 import FileLoggerService from '@services/logger/FileLoggerService';
 import ConstellationMetagraphService from '@services/metagraph/ConstellationMetagraphService';
 import NoSeedlistService from '@services/seedlist/NoSeedlistService';
 import Ssh2Service from '@services/ssh/Ssh2Service';
+import { NetworkNames } from '@shared/constants';
 
 import CheckMetagraphHealth from './check-metagraph-health/CheckMetagraphHealth';
 import SnapshotsStopped from './check-metagraph-health/restart/conditions/SnapshotsStopped';
@@ -82,6 +84,7 @@ export default class MonitoringApp {
   constructor(
     configs: MonitoringConfigs,
     forceRestart: boolean = false,
+    devMode: boolean = false,
     services?: {
       logger?: ILoggerService;
       sshServices?: ISshService[];
@@ -94,9 +97,14 @@ export default class MonitoringApp {
   ) {
     this.configs = configs;
 
+    this.validateNetwork();
+
     this.forceRestart = forceRestart;
 
-    this.logger = services?.logger ?? new FileLoggerService();
+    this.logger =
+      services?.logger ?? devMode
+        ? new ConsoleLoggerService()
+        : new FileLoggerService();
 
     this.sshServices =
       services?.sshServices ?? this.buildSshServices(this.logger);
@@ -175,6 +183,20 @@ export default class MonitoringApp {
     }
 
     return restartConditions;
+  }
+
+  private validateNetwork() {
+    const validNetworkNames: NetworkNames[] = [
+      'mainnet',
+      'integrationnet',
+      'testnet',
+    ];
+
+    if (
+      !validNetworkNames.includes(this.configs.network.name as NetworkNames)
+    ) {
+      throw Error('Invalid network');
+    }
   }
 
   private async initializeSshConnections() {
