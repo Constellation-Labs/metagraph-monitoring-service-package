@@ -71,15 +71,15 @@ export type MonitoringConfigs = {
 };
 
 export default class MonitoringApp {
-  private configs: MonitoringConfigs;
-  private sshServices: ISshService[];
-  private metagraphService: IMetagraphService;
-  private globalNetworkService: IGlobalNetworkService;
-  private seedlistService: ISeedlistService;
-  private logger: ILoggerService;
-  private alertService: IAlertService;
-  private forceRestart: boolean;
-  private restartConditions: IRestartCondition[];
+  public configs: MonitoringConfigs;
+  public sshServices: ISshService[];
+  public metagraphService: IMetagraphService;
+  public globalNetworkService: IGlobalNetworkService;
+  public seedlistService: ISeedlistService;
+  public logger: ILoggerService;
+  public alertService: IAlertService;
+  public forceRestart: boolean;
+  public restartConditions: IRestartCondition[];
 
   constructor(
     configs: MonitoringConfigs,
