@@ -95,7 +95,7 @@ export default class CheckMetagraphHealth {
             );
 
             this.logger.info(
-              `Condition ${restartCondition} detected, triggering restart...`,
+              `Condition ${restartCondition.name} detected, triggering restart...`,
             );
 
             await restartCondition.triggerRestart();
