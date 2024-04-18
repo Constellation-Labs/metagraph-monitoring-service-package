@@ -1,6 +1,6 @@
 
-# Metagraph Monitoring Service
-This repository hosts the Metagraph Monitoring Service. This service is responsible for monitoring your metagraph and performing restarts as needed. More details are provided in the sections below.
+# Metagraph Monitoring Service Package
+This repository hosts the Metagraph Monitoring Service package. This package is responsible for monitoring your metagraph and performing restarts as needed. More details are provided in the sections below.
 
 ## Dependencies
 
