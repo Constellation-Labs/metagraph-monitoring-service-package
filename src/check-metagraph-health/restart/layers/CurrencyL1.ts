@@ -6,12 +6,14 @@ import IMetagraphService, {
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 import { Layers, NodeStatuses } from '@shared/constants';
-import { MonitoringConfigs } from 'src';
+import { Configs, MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
 import waitForNode from '../utils/wait-for-node';
 
 export class CurrencyL1 {
-  config: MonitoringConfigs;
+  private monitoringConfiguration: MonitoringConfiguration;
+
+  config: Configs;
   sshService: ISshService;
   metagraphService: IMetagraphService;
   seedlistService: ISeedlistService;
@@ -22,19 +24,17 @@ export class CurrencyL1 {
   referenceSourceNode: NetworkNode;
 
   constructor(
-    config: MonitoringConfigs,
+    monitoringConfiguration: MonitoringConfiguration,
     sshService: ISshService,
-    metagraphService: IMetagraphService,
-    seedlistService: ISeedlistService,
-    logger: ILoggerService,
     referenceMetagraphL0Node: MetagraphNode,
     referenceSourceNode: NetworkNode,
   ) {
-    this.config = config;
+    this.monitoringConfiguration = monitoringConfiguration;
+    this.config = monitoringConfiguration.configs;
     this.sshService = sshService;
-    this.metagraphService = metagraphService;
-    this.seedlistService = seedlistService;
-    this.logger = logger;
+    this.metagraphService = monitoringConfiguration.metagraphService;
+    this.seedlistService = monitoringConfiguration.seedlistService;
+    this.logger = monitoringConfiguration.logger;
 
     this.currentNode = sshService.metagraphNode;
     this.referenceMetagraphL0Node = referenceMetagraphL0Node;
@@ -96,11 +96,8 @@ export class CurrencyL1 {
 
   private async startAndJoinValidator(validatorHost: ISshService) {
     const validatorCl1 = new CurrencyL1(
-      this.config,
+      this.monitoringConfiguration,
       validatorHost,
-      this.metagraphService,
-      this.seedlistService,
-      this.logger,
       this.currentNode,
       this.referenceSourceNode,
     );

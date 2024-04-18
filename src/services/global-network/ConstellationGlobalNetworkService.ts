@@ -5,6 +5,7 @@ import IGlobalNetworkService, {
   NetworkNode,
 } from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
+import { MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
 export default class ConstellationGlobalNetworkService
   implements IGlobalNetworkService
@@ -15,19 +16,16 @@ export default class ConstellationGlobalNetworkService
   referenceSourceNode: NetworkNode;
   logger: ILoggerService;
 
-  constructor(
-    networkName: string,
-    nodes: NetworkNode[],
-    logger: ILoggerService,
-  ) {
-    this.name = networkName;
+  constructor(monitoringConfiguration: MonitoringConfiguration) {
+    const { name, nodes } = monitoringConfiguration.configs.network;
+    this.name = name;
     if (!nodes || Object.keys(nodes).length === 0) {
-      throw Error(`Could not find nodes of network: ${networkName}`);
+      throw Error(`Could not find nodes of network: ${name}`);
     }
     this.nodes = nodes;
-    this.beUrl = `https://be-${networkName}.constellationnetwork.io/global-snapshots/latest`;
+    this.beUrl = `https://be-${name}.constellationnetwork.io/global-snapshots/latest`;
     this.referenceSourceNode = { ip: '', id: '', port: 0 };
-    this.logger = logger;
+    this.logger = monitoringConfiguration.logger;
   }
 
   private async customLogger(message: string) {

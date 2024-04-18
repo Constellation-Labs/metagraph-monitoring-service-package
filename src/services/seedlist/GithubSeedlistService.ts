@@ -5,15 +5,15 @@ import ISeedlistService, {
   SeedListInfo,
 } from '@interfaces/services/seedlist/ISeedlistService';
 import { AvailableLayers } from '@shared/constants';
-import { MonitoringConfigs } from 'src';
+import { MonitoringConfiguration, Configs } from 'src/MonitoringConfiguration';
 
 export default class GithubSeedlistService implements ISeedlistService {
   logger: ILoggerService;
-  config: MonitoringConfigs;
+  config: Configs;
 
-  constructor(logger: ILoggerService, config: MonitoringConfigs) {
-    this.logger = logger;
-    this.config = config;
+  constructor(monitoringConfiguration: MonitoringConfiguration) {
+    this.logger = monitoringConfiguration.logger;
+    this.config = monitoringConfiguration.configs;
   }
 
   private async customLogger(message: string) {

@@ -6,33 +6,29 @@ import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
-import { MonitoringConfigs } from 'src';
+import { Configs, MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
 import { FullMetagraph } from '../groups/FullMetagraph';
 
 export default class ForceMetagraphRestart implements IRestartCondition {
+  private monitoringConfiguration: MonitoringConfiguration;
+
   name = 'Force Metagraph Restart';
-  config: MonitoringConfigs;
+  config: Configs;
   sshServices: ISshService[];
   metagraphService: IMetagraphService;
-  globalNetwokService: IGlobalNetworkService;
+  globalNetworkService: IGlobalNetworkService;
   seedlistService: ISeedlistService;
   logger: ILoggerService;
 
-  constructor(
-    config: MonitoringConfigs,
-    sshServices: ISshService[],
-    metagraphService: IMetagraphService,
-    globalNetwokService: IGlobalNetworkService,
-    seedlistService: ISeedlistService,
-    logger: ILoggerService,
-  ) {
-    this.config = config;
-    this.sshServices = sshServices;
-    this.metagraphService = metagraphService;
-    this.globalNetwokService = globalNetwokService;
-    this.seedlistService = seedlistService;
-    this.logger = logger;
+  constructor(monitoringConfiguration: MonitoringConfiguration) {
+    this.monitoringConfiguration = monitoringConfiguration;
+    this.config = monitoringConfiguration.configs;
+    this.sshServices = monitoringConfiguration.sshServices;
+    this.metagraphService = monitoringConfiguration.metagraphService;
+    this.globalNetworkService = monitoringConfiguration.globalNetworkService;
+    this.seedlistService = monitoringConfiguration.seedlistService;
+    this.logger = monitoringConfiguration.logger;
   }
 
   async shouldRestart(): Promise<ShouldRestartInfo> {
@@ -46,12 +42,8 @@ export default class ForceMetagraphRestart implements IRestartCondition {
 
   async triggerRestart(): Promise<void> {
     const fullMetagraph = new FullMetagraph(
-      this.config,
-      this.sshServices,
-      this.metagraphService,
-      this.seedlistService,
-      this.logger,
-      this.globalNetwokService.referenceSourceNode,
+      this.monitoringConfiguration,
+      this.globalNetworkService.referenceSourceNode,
     );
 
     await fullMetagraph.performRestart();

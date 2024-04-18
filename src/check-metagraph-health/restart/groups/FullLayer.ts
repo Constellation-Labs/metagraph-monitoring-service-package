@@ -4,7 +4,7 @@ import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService'
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 import { AvailableLayers, Layers } from '@shared/constants';
-import { MonitoringConfigs } from 'src';
+import { Configs, MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
 import { FullMetagraph } from './FullMetagraph';
 import { CurrencyL1 } from '../layers/CurrencyL1';
@@ -13,7 +13,8 @@ import killCurrentExecution from '../utils/kill-current-execution';
 import saveCurrentLogs from '../utils/save-current-logs';
 
 export class FullLayer {
-  private config: MonitoringConfigs;
+  private monitoringConfiguration: MonitoringConfiguration;
+  private config: Configs;
   private sshServices: ISshService[];
   private metagraphService: IMetagraphService;
   private seedlistService: ISeedlistService;
@@ -23,19 +24,16 @@ export class FullLayer {
   layer: AvailableLayers;
 
   constructor(
-    config: MonitoringConfigs,
-    sshServices: ISshService[],
-    metagraphService: IMetagraphService,
-    seedlistService: ISeedlistService,
-    logger: ILoggerService,
+    monitoringConfiguration: MonitoringConfiguration,
     referenceSourceNode: NetworkNode,
     layer: AvailableLayers,
   ) {
-    this.config = config;
-    this.sshServices = sshServices;
-    this.seedlistService = seedlistService;
-    this.metagraphService = metagraphService;
-    this.logger = logger;
+    this.monitoringConfiguration = monitoringConfiguration;
+    this.config = monitoringConfiguration.configs;
+    this.sshServices = monitoringConfiguration.sshServices;
+    this.seedlistService = monitoringConfiguration.seedlistService;
+    this.metagraphService = monitoringConfiguration.metagraphService;
+    this.logger = monitoringConfiguration.logger;
     this.referenceSourceNode = referenceSourceNode;
     this.layer = layer;
   }
@@ -115,11 +113,7 @@ export class FullLayer {
         `All layer ${this.layer} is offline, triggering a full restart`,
       );
       const fullCluster = new FullMetagraph(
-        this.config,
-        this.sshServices,
-        this.metagraphService,
-        this.seedlistService,
-        this.logger,
+        this.monitoringConfiguration,
         this.referenceSourceNode,
       );
       return await fullCluster.performRestart();
@@ -130,11 +124,8 @@ export class FullLayer {
         `All layer ${this.layer} is offline, triggering a layer restart`,
       );
       const currencyL1 = new CurrencyL1(
-        this.config,
+        this.monitoringConfiguration,
         rollbackHost,
-        this.metagraphService,
-        this.seedlistService,
-        this.logger,
         rollbackHost.metagraphNode,
         this.referenceSourceNode,
       );
@@ -146,11 +137,8 @@ export class FullLayer {
         `All layer ${this.layer} is offline, triggering a layer restart`,
       );
       const dataL1 = new DataL1(
-        this.config,
+        this.monitoringConfiguration,
         rollbackHost,
-        this.metagraphService,
-        this.seedlistService,
-        this.logger,
         rollbackHost.metagraphNode,
         this.referenceSourceNode,
       );

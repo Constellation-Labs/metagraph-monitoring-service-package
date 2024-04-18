@@ -4,7 +4,7 @@ import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService'
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 import { Layers } from '@shared/constants';
-import { MonitoringConfigs } from 'src';
+import { Configs, MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
 import { CurrencyL1 } from '../layers/CurrencyL1';
 import { DataL1 } from '../layers/DataL1';
@@ -14,7 +14,8 @@ import killCurrentExecution from '../utils/kill-current-execution';
 import saveCurrentLogs from '../utils/save-current-logs';
 
 export class FullMetagraph {
-  private config: MonitoringConfigs;
+  private monitoringConfiguration: MonitoringConfiguration;
+  private config: Configs;
   private sshServices: ISshService[];
   private metagraphService: IMetagraphService;
   private seedlistService: ISeedlistService;
@@ -23,19 +24,16 @@ export class FullMetagraph {
   referenceSourceNode: NetworkNode;
 
   constructor(
-    config: MonitoringConfigs,
-    sshServices: ISshService[],
-    metagraphService: IMetagraphService,
-    seedlistService: ISeedlistService,
-    logger: ILoggerService,
+    monitoringConfiguration: MonitoringConfiguration,
     referenceSourceNode: NetworkNode,
   ) {
-    this.config = config;
-    this.sshServices = sshServices;
-    this.metagraphService = metagraphService;
-    this.seedlistService = seedlistService;
+    this.monitoringConfiguration = monitoringConfiguration;
+    this.config = monitoringConfiguration.configs;
+    this.sshServices = monitoringConfiguration.sshServices;
+    this.metagraphService = monitoringConfiguration.metagraphService;
+    this.seedlistService = monitoringConfiguration.seedlistService;
     this.referenceSourceNode = referenceSourceNode;
-    this.logger = logger;
+    this.logger = monitoringConfiguration.logger;
   }
 
   private customLogger(message: string) {
@@ -156,11 +154,8 @@ export class FullMetagraph {
     );
 
     const metagraphL0 = new MetagraphL0(
-      this.config,
+      this.monitoringConfiguration,
       rollbackHost,
-      this.metagraphService,
-      this.seedlistService,
-      this.logger,
       this.referenceSourceNode,
     );
     await metagraphL0.startCluster(validatorHosts);
@@ -168,11 +163,8 @@ export class FullMetagraph {
     const promises = [];
     if (!this.config.metagraph.layers.cl1.ignore_layer) {
       const currencyL1 = new CurrencyL1(
-        this.config,
+        this.monitoringConfiguration,
         rollbackHost,
-        this.metagraphService,
-        this.seedlistService,
-        this.logger,
         rollbackHost.metagraphNode,
         this.referenceSourceNode,
       );
@@ -181,11 +173,8 @@ export class FullMetagraph {
 
     if (!this.config.metagraph.layers.dl1.ignore_layer) {
       const dataL1 = new DataL1(
-        this.config,
+        this.monitoringConfiguration,
         rollbackHost,
-        this.metagraphService,
-        this.seedlistService,
-        this.logger,
         rollbackHost.metagraphNode,
         this.referenceSourceNode,
       );

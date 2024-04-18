@@ -1,14 +1,14 @@
 import IAlertService from '@interfaces/services/alert/IAlertService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
-import { MonitoringConfigs } from 'src';
+import { MonitoringConfiguration, Configs } from 'src/MonitoringConfiguration';
 
 export default class NoAlertsService implements IAlertService {
   logger: ILoggerService;
-  config: MonitoringConfigs;
+  config: Configs;
 
-  constructor(logger: ILoggerService, config: MonitoringConfigs) {
-    this.logger = logger;
-    this.config = config;
+  constructor(configuration: MonitoringConfiguration) {
+    this.logger = configuration.logger;
+    this.config = configuration.configs;
   }
 
   private customLog(message: string) {

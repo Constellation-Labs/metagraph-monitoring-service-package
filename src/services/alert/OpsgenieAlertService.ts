@@ -5,11 +5,11 @@ import IAlertService, {
 } from '@interfaces/services/alert/IAlertService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import { NetworkNames } from '@shared/constants';
-import { MonitoringConfigs } from 'src';
+import { MonitoringConfiguration, Configs } from 'src/MonitoringConfiguration';
 
 export default class OpsgenieAlertService implements IAlertService {
   logger: ILoggerService;
-  config: MonitoringConfigs;
+  config: Configs;
 
   private opsgenie_alert_url: string = 'https://api.opsgenie.com/v2/alerts';
   private opsgenie_api_key: string;
@@ -21,12 +21,11 @@ export default class OpsgenieAlertService implements IAlertService {
   };
 
   constructor(
-    logger: ILoggerService,
-    config: MonitoringConfigs,
+    monitoringConfiguration: MonitoringConfiguration,
     opsgenieAlertKey: string,
   ) {
-    this.config = config;
-    this.logger = logger;
+    this.config = monitoringConfiguration.configs;
+    this.logger = monitoringConfiguration.logger;
     this.opsgenie_api_key = opsgenieAlertKey;
   }
 

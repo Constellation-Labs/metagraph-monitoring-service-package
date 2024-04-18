@@ -3,12 +3,13 @@ import ISeedlistService, {
   SeedListInfo,
 } from '@interfaces/services/seedlist/ISeedlistService';
 import { AvailableLayers } from '@shared/constants';
+import { MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
 export default class NoSeedlistService implements ISeedlistService {
   logger: ILoggerService;
 
-  constructor(logger: ILoggerService) {
-    this.logger = logger;
+  constructor(monitoringConfiguration: MonitoringConfiguration) {
+    this.logger = monitoringConfiguration.logger;
   }
 
   private async customLogger(message: string) {

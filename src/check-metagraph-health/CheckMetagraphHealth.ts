@@ -5,42 +5,37 @@ import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
-import { MonitoringConfigs } from 'src';
+import { MonitoringConfiguration, Configs } from 'src/MonitoringConfiguration';
 
 import ForceMetagraphRestart from './restart/conditions/ForceMetagraphRestart';
 
 export default class CheckMetagraphHealth {
-  public config: MonitoringConfigs;
+  public monitoringConfiguration: MonitoringConfiguration;
+  public config: Configs;
   public sshServices: ISshService[];
   public metagraphService: IMetagraphService;
   public globalNetworkService: IGlobalNetworkService;
   public seedlistService: ISeedlistService;
   public logger: ILoggerService;
   public alertService: IAlertService;
-  public restartConditionals: IRestartCondition[];
+  public restartConditions: IRestartCondition[];
 
   public forceRestart: boolean;
 
   constructor(
-    config: MonitoringConfigs,
-    sshServices: ISshService[],
-    metagraphService: IMetagraphService,
-    globalNetworkService: IGlobalNetworkService,
-    seedlistService: ISeedlistService,
-    logger: ILoggerService,
-    alertService: IAlertService,
+    monitoringConfiguration: MonitoringConfiguration,
     forceRestart: boolean,
-    restartConditionals: IRestartCondition[],
   ) {
-    this.config = config;
-    this.sshServices = sshServices;
-    this.metagraphService = metagraphService;
-    this.globalNetworkService = globalNetworkService;
-    this.seedlistService = seedlistService;
-    this.logger = logger;
-    this.alertService = alertService;
+    this.monitoringConfiguration = monitoringConfiguration;
+    this.config = monitoringConfiguration.configs;
+    this.sshServices = monitoringConfiguration.sshServices;
+    this.metagraphService = monitoringConfiguration.metagraphService;
+    this.globalNetworkService = monitoringConfiguration.globalNetworkService;
+    this.seedlistService = monitoringConfiguration.seedlistService;
+    this.logger = monitoringConfiguration.logger;
+    this.alertService = monitoringConfiguration.alertService;
     this.forceRestart = forceRestart;
-    this.restartConditionals = restartConditionals;
+    this.restartConditions = monitoringConfiguration.restartConditions;
   }
 
   private async closeRemoteAlerts() {
@@ -71,12 +66,7 @@ export default class CheckMetagraphHealth {
         );
 
         await new ForceMetagraphRestart(
-          this.config,
-          this.sshServices,
-          this.metagraphService,
-          this.globalNetworkService,
-          this.seedlistService,
-          this.logger,
+          this.monitoringConfiguration,
         ).triggerRestart();
 
         await this.closeRemoteAlerts();
@@ -85,7 +75,7 @@ export default class CheckMetagraphHealth {
       }
 
       this.logger.info(`Checking conditions to metagraph restart`);
-      for (const restartCondition of this.restartConditionals) {
+      for (const restartCondition of this.restartConditions) {
         try {
           const shoulRestartInfo = await restartCondition.shouldRestart();
           if (shoulRestartInfo.shouldRestart) {

@@ -6,12 +6,14 @@ import IMetagraphService, {
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 import { Layers, NodeStatuses } from '@shared/constants';
-import { MonitoringConfigs } from 'src';
+import { Configs, MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
 import waitForNode from '../utils/wait-for-node';
 
 export class MetagraphL0 {
-  config: MonitoringConfigs;
+  private monitoringConfiguration: MonitoringConfiguration;
+
+  config: Configs;
   sshService: ISshService;
   metagraphService: IMetagraphService;
   seedlistService: ISeedlistService;
@@ -21,18 +23,16 @@ export class MetagraphL0 {
   referenceSourceNode: NetworkNode;
 
   constructor(
-    config: MonitoringConfigs,
+    monitoringConfiguration: MonitoringConfiguration,
     sshService: ISshService,
-    metagraphService: IMetagraphService,
-    seedlistService: ISeedlistService,
-    logger: ILoggerService,
     referenceSourceNode: NetworkNode,
   ) {
-    this.config = config;
+    this.monitoringConfiguration = monitoringConfiguration;
+    this.config = monitoringConfiguration.configs;
     this.sshService = sshService;
-    this.metagraphService = metagraphService;
-    this.seedlistService = seedlistService;
-    this.logger = logger;
+    this.metagraphService = monitoringConfiguration.metagraphService;
+    this.seedlistService = monitoringConfiguration.seedlistService;
+    this.logger = monitoringConfiguration.logger;
 
     this.currentNode = sshService.metagraphNode;
     this.referenceSourceNode = referenceSourceNode;
@@ -84,11 +84,8 @@ export class MetagraphL0 {
 
   private async startAndJoinValidator(validatorHost: ISshService) {
     const validatorMl0 = new MetagraphL0(
-      this.config,
+      this.monitoringConfiguration,
       validatorHost,
-      this.metagraphService,
-      this.seedlistService,
-      this.logger,
       this.referenceSourceNode,
     );
     await validatorMl0.startValidatorNodeL0();

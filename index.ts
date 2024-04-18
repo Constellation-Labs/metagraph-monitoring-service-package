@@ -1,4 +1,8 @@
-import MonitoringApp, { MonitoringConfigs } from './src';
+import MonitoringApp from './src';
+import {
+  Configs,
+  MonitoringConfiguration,
+} from './src/MonitoringConfiguration';
 
 export default MonitoringApp;
-export type { MonitoringConfigs };
+export type { Configs, MonitoringConfiguration };

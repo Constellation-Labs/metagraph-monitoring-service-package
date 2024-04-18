@@ -7,17 +7,19 @@ import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService'
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 import { Layers } from '@shared/constants';
-import { MonitoringConfigs } from 'src';
+import { Configs, MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
 import { FullLayer } from '../groups/FullLayer';
 import { IndividualNode } from '../groups/IndividualNode';
 
 export default class UnhealthyNodes implements IRestartCondition {
+  private monitoringConfiguration: MonitoringConfiguration;
+
   name = 'Unhealthy Nodes';
-  config: MonitoringConfigs;
+  config: Configs;
   sshServices: ISshService[];
   metagraphService: IMetagraphService;
-  globalNetwokService: IGlobalNetworkService;
+  globalNetworkService: IGlobalNetworkService;
   seedlistService: ISeedlistService;
   logger: ILoggerService;
 
@@ -27,20 +29,14 @@ export default class UnhealthyNodes implements IRestartCondition {
   private currencyL1UnhealthyNodes: ISshService[] = [];
   private dataL1NUnhealthyNodes: ISshService[] = [];
 
-  constructor(
-    config: MonitoringConfigs,
-    sshServices: ISshService[],
-    metagraphService: IMetagraphService,
-    globalNetwokService: IGlobalNetworkService,
-    seedlistService: ISeedlistService,
-    logger: ILoggerService,
-  ) {
-    this.config = config;
-    this.sshServices = sshServices;
-    this.metagraphService = metagraphService;
-    this.globalNetwokService = globalNetwokService;
-    this.seedlistService = seedlistService;
-    this.logger = logger;
+  constructor(monitoringConfiguration: MonitoringConfiguration) {
+    this.monitoringConfiguration = monitoringConfiguration;
+    this.config = monitoringConfiguration.configs;
+    this.sshServices = monitoringConfiguration.sshServices;
+    this.metagraphService = monitoringConfiguration.metagraphService;
+    this.globalNetworkService = monitoringConfiguration.globalNetworkService;
+    this.seedlistService = monitoringConfiguration.seedlistService;
+    this.logger = monitoringConfiguration.logger;
   }
 
   private async customLogger(message: string) {
@@ -53,12 +49,8 @@ export default class UnhealthyNodes implements IRestartCondition {
       this.config.metagraph.nodes.length
     ) {
       await new FullLayer(
-        this.config,
-        this.sshServices,
-        this.metagraphService,
-        this.seedlistService,
-        this.logger,
-        this.globalNetwokService.referenceSourceNode,
+        this.monitoringConfiguration,
+        this.globalNetworkService.referenceSourceNode,
         Layers.ML0,
       ).performRestart();
 
@@ -69,12 +61,8 @@ export default class UnhealthyNodes implements IRestartCondition {
       this.config.metagraph.nodes.length
     ) {
       await new FullLayer(
-        this.config,
-        this.sshServices,
-        this.metagraphService,
-        this.seedlistService,
-        this.logger,
-        this.globalNetwokService.referenceSourceNode,
+        this.monitoringConfiguration,
+        this.globalNetworkService.referenceSourceNode,
         Layers.CL1,
       ).performRestart();
 
@@ -84,12 +72,8 @@ export default class UnhealthyNodes implements IRestartCondition {
       this.dataL1NUnhealthyNodes.length === this.config.metagraph.nodes.length
     ) {
       await new FullLayer(
-        this.config,
-        this.sshServices,
-        this.metagraphService,
-        this.seedlistService,
-        this.logger,
-        this.globalNetwokService.referenceSourceNode,
+        this.monitoringConfiguration,
+        this.globalNetworkService.referenceSourceNode,
         Layers.DL1,
       ).performRestart();
 
@@ -113,13 +97,10 @@ export default class UnhealthyNodes implements IRestartCondition {
       }
       for (const metagraphL0 of this.metagraphL0UnhealthyNodes) {
         await new IndividualNode(
-          this.config,
+          this.monitoringConfiguration,
           metagraphL0,
-          this.metagraphService,
-          this.seedlistService,
-          this.logger,
           metagraphReferenceNode,
-          this.globalNetwokService.referenceSourceNode,
+          this.globalNetworkService.referenceSourceNode,
           Layers.ML0,
         ).performRestart();
       }
@@ -138,13 +119,10 @@ export default class UnhealthyNodes implements IRestartCondition {
       }
       for (const currencyL1 of this.currencyL1UnhealthyNodes) {
         await new IndividualNode(
-          this.config,
+          this.monitoringConfiguration,
           currencyL1,
-          this.metagraphService,
-          this.seedlistService,
-          this.logger,
           metagraphReferenceNode,
-          this.globalNetwokService.referenceSourceNode,
+          this.globalNetworkService.referenceSourceNode,
           Layers.CL1,
         ).performRestart();
       }
@@ -164,13 +142,10 @@ export default class UnhealthyNodes implements IRestartCondition {
       }
       for (const dataL1 of this.dataL1NUnhealthyNodes) {
         await new IndividualNode(
-          this.config,
+          this.monitoringConfiguration,
           dataL1,
-          this.metagraphService,
-          this.seedlistService,
-          this.logger,
           metagraphReferenceNode,
-          this.globalNetwokService.referenceSourceNode,
+          this.globalNetworkService.referenceSourceNode,
           Layers.DL1,
         ).performRestart();
       }

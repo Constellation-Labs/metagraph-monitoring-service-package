@@ -7,24 +7,24 @@ import IMetagraphService, {
   MetagraphSnapshotInfo,
 } from '@interfaces/services/metagraph/IMetagraphService';
 import { NodeStatuses } from '@shared/constants';
-import { MonitoringConfigs } from 'src';
+import { MonitoringConfiguration, Configs } from 'src/MonitoringConfiguration';
 
 export default class ConstellationMetagraphService
   implements IMetagraphService
 {
-  config: MonitoringConfigs;
+  config: Configs;
   metagraphId: string;
   nodes: MetagraphNode[];
   networName: string;
   logger: ILoggerService;
   metagraphSnapshotInfo: MetagraphSnapshotInfo;
 
-  constructor(logger: ILoggerService, config: MonitoringConfigs) {
-    this.config = config;
-    this.metagraphId = config.metagraph.id;
-    this.nodes = config.metagraph.nodes;
-    this.networName = config.network.name;
-    this.logger = logger;
+  constructor(monitoringConfiguration: MonitoringConfiguration) {
+    this.config = monitoringConfiguration.configs;
+    this.metagraphId = this.config.metagraph.id;
+    this.nodes = this.config.metagraph.nodes;
+    this.networName = this.config.network.name;
+    this.logger = monitoringConfiguration.logger;
     this.metagraphSnapshotInfo = {
       lastSnapshotTimestamp: 0,
       lastSnapshotOrdinal: 0,
