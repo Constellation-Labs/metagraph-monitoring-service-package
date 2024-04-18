@@ -10,16 +10,16 @@ import { MonitoringConfigs } from 'src';
 import ForceMetagraphRestart from './restart/conditions/ForceMetagraphRestart';
 
 export default class CheckMetagraphHealth {
-  private config: MonitoringConfigs;
-  private sshServices: ISshService[];
-  private metagraphService: IMetagraphService;
-  private globalNetworkService: IGlobalNetworkService;
-  private seedlistService: ISeedlistService;
-  private logger: ILoggerService;
-  private alertService: IAlertService;
-  private restartConditionals: IRestartCondition[];
+  public config: MonitoringConfigs;
+  public sshServices: ISshService[];
+  public metagraphService: IMetagraphService;
+  public globalNetworkService: IGlobalNetworkService;
+  public seedlistService: ISeedlistService;
+  public logger: ILoggerService;
+  public alertService: IAlertService;
+  public restartConditionals: IRestartCondition[];
 
-  private forceRestart: boolean;
+  public forceRestart: boolean;
 
   constructor(
     config: MonitoringConfigs,
