@@ -1,57 +1,61 @@
 import { NetworkNode } from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
-import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
-import { AvailableLayers, Layers } from '@shared/constants';
-import { Configs, MonitoringConfiguration } from 'src/MonitoringConfiguration';
+import { Layers } from '@shared/constants';
+import { Config, MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
-import { FullMetagraph } from './FullMetagraph';
 import { CurrencyL1 } from '../layers/CurrencyL1';
 import { DataL1 } from '../layers/DataL1';
+import { MetagraphL0 } from '../layers/MetagraphL0';
+import cleanupSnapshotsGreaterThanRollback from '../utils/cleanup-snapshots-greater-than-rollback';
 import killCurrentExecution from '../utils/kill-current-execution';
 import saveCurrentLogs from '../utils/save-current-logs';
 
-export class FullLayer {
+export class FullMetagraph {
   private monitoringConfiguration: MonitoringConfiguration;
-  private config: Configs;
+  private config: Config;
   private sshServices: ISshService[];
   private metagraphService: IMetagraphService;
-  private seedlistService: ISeedlistService;
-  private logger: ILoggerService;
+  private loggerService: ILoggerService;
 
   referenceSourceNode: NetworkNode;
-  layer: AvailableLayers;
 
   constructor(
     monitoringConfiguration: MonitoringConfiguration,
     referenceSourceNode: NetworkNode,
-    layer: AvailableLayers,
   ) {
     this.monitoringConfiguration = monitoringConfiguration;
-    this.config = monitoringConfiguration.configs;
+    this.config = monitoringConfiguration.config;
     this.sshServices = monitoringConfiguration.sshServices;
-    this.seedlistService = monitoringConfiguration.seedlistService;
     this.metagraphService = monitoringConfiguration.metagraphService;
-    this.logger = monitoringConfiguration.logger;
     this.referenceSourceNode = referenceSourceNode;
-    this.layer = layer;
+    this.loggerService = monitoringConfiguration.loggerService;
   }
 
   private customLogger(message: string) {
-    this.logger.info(`[FullLayer] ${message}`);
+    this.loggerService.info(`[FullMetagraph] ${message}`);
   }
 
   private async killProcesses() {
     const promises = [];
     const killProcess = async (sshService: ISshService) => {
       this.customLogger(
-        `Killing ${this.layer} current processes in node ${sshService.metagraphNode.ip}`,
+        `Killing all layers current processes in node ${sshService.metagraphNode.ip}`,
+      );
+      await killCurrentExecution(
+        sshService,
+        this.config.metagraph.layers.ml0.ports.public,
       );
 
       await killCurrentExecution(
         sshService,
-        this.config.metagraph.layers[this.layer].ports.public,
+        this.config.metagraph.layers.cl1.ports.public,
+      );
+
+      await killCurrentExecution(
+        sshService,
+        this.config.metagraph.layers.dl1.ports.public,
       );
 
       this.customLogger(
@@ -70,10 +74,16 @@ export class FullLayer {
     const promises = [];
     const moveLogs = async (sshService: ISshService) => {
       this.customLogger(
-        `Saving current logs of ${this.layer} in node ${sshService.metagraphNode.ip}`,
+        `Saving current logs of all layers in node ${sshService.metagraphNode.ip}`,
       );
 
-      await saveCurrentLogs(sshService, this.layer);
+      await saveCurrentLogs(sshService, Layers.ML0);
+
+      !this.config.metagraph.layers.cl1.ignore_layer &&
+        (await saveCurrentLogs(sshService, Layers.CL1));
+
+      !this.config.metagraph.layers.dl1.ignore_layer &&
+        (await saveCurrentLogs(sshService, Layers.DL1));
 
       this.customLogger(
         `Finished saving current logs in node ${sshService.metagraphNode.ip}`,
@@ -87,11 +97,43 @@ export class FullLayer {
     await Promise.all(promises);
   }
 
+  private async cleanupSnapshots() {
+    const initialSnapshot =
+      this.metagraphService.metagraphSnapshotInfo.lastSnapshotOrdinal + 1;
+    const finalSnapshot =
+      this.metagraphService.metagraphSnapshotInfo.lastSnapshotOrdinal + 500;
+
+    const promises = [];
+    const cleanupSnapshot = async (sshService: ISshService) => {
+      this.customLogger(
+        `Cleaning snapshots between ${initialSnapshot} and ${finalSnapshot} in node ${sshService.metagraphNode.ip}`,
+      );
+
+      await cleanupSnapshotsGreaterThanRollback(
+        sshService,
+        initialSnapshot,
+        finalSnapshot,
+      );
+
+      this.customLogger(
+        `Finished cleaning snapshots between ${initialSnapshot} and ${finalSnapshot} in node ${sshService.metagraphNode.ip}`,
+      );
+    };
+
+    for (const sshService of this.sshServices) {
+      promises.push(cleanupSnapshot(sshService));
+    }
+
+    await Promise.all(promises);
+  }
+
   async performRestart() {
     await this.killProcesses();
     await this.moveLogs();
+    await this.cleanupSnapshots();
 
     const { nodes: metagraphNodes } = this.config.metagraph;
+
     const rollbackHost = this.sshServices.find((it) => it.nodeNumber === 1);
     if (!rollbackHost) {
       throw Error(
@@ -108,41 +150,34 @@ export class FullLayer {
       `Validator nodes: ${JSON.stringify(validatorHosts.map((it) => it.metagraphNode))}`,
     );
 
-    if (this.layer === Layers.ML0) {
-      this.customLogger(
-        `All layer ${this.layer} is offline, triggering a full restart`,
-      );
-      const fullCluster = new FullMetagraph(
-        this.monitoringConfiguration,
-        this.referenceSourceNode,
-      );
-      return await fullCluster.performRestart();
-    }
+    const metagraphL0 = new MetagraphL0(
+      this.monitoringConfiguration,
+      rollbackHost,
+      this.referenceSourceNode,
+    );
+    await metagraphL0.startCluster(validatorHosts);
 
-    if (this.layer === Layers.CL1) {
-      this.customLogger(
-        `All layer ${this.layer} is offline, triggering a layer restart`,
-      );
+    const promises = [];
+    if (!this.config.metagraph.layers.cl1.ignore_layer) {
       const currencyL1 = new CurrencyL1(
         this.monitoringConfiguration,
         rollbackHost,
         rollbackHost.metagraphNode,
         this.referenceSourceNode,
       );
-      await currencyL1.startCluster(validatorHosts);
+      promises.push(currencyL1.startCluster(validatorHosts));
     }
 
-    if (this.layer === Layers.DL1) {
-      this.customLogger(
-        `All layer ${this.layer} is offline, triggering a layer restart`,
-      );
+    if (!this.config.metagraph.layers.dl1.ignore_layer) {
       const dataL1 = new DataL1(
         this.monitoringConfiguration,
         rollbackHost,
         rollbackHost.metagraphNode,
         this.referenceSourceNode,
       );
-      await dataL1.startCluster(validatorHosts);
+      promises.push(dataL1.startCluster(validatorHosts));
     }
+
+    await Promise.all(promises);
   }
 }

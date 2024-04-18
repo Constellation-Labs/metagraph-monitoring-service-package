@@ -6,18 +6,18 @@ import IMetagraphService, {
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 import { Layers, NodeStatuses } from '@shared/constants';
-import { Configs, MonitoringConfiguration } from 'src/MonitoringConfiguration';
+import { Config, MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
 import waitForNode from '../utils/wait-for-node';
 
 export class DataL1 {
   private monitoringConfiguration: MonitoringConfiguration;
 
-  config: Configs;
+  config: Config;
   sshService: ISshService;
   metagraphService: IMetagraphService;
   seedlistService: ISeedlistService;
-  logger: ILoggerService;
+  loggerService: ILoggerService;
 
   currentNode: MetagraphNode;
   referenceMetagraphL0Node: MetagraphNode;
@@ -30,11 +30,11 @@ export class DataL1 {
     referenceSourceNode: NetworkNode,
   ) {
     this.monitoringConfiguration = monitoringConfiguration;
-    this.config = monitoringConfiguration.configs;
+    this.config = monitoringConfiguration.config;
     this.sshService = sshService;
     this.metagraphService = monitoringConfiguration.metagraphService;
     this.seedlistService = monitoringConfiguration.seedlistService;
-    this.logger = monitoringConfiguration.logger;
+    this.loggerService = monitoringConfiguration.loggerService;
 
     this.currentNode = sshService.metagraphNode;
     this.referenceMetagraphL0Node = referenceMetagraphL0Node;
@@ -42,7 +42,7 @@ export class DataL1 {
   }
 
   private async customLogger(message: string) {
-    this.logger.info(`[Data L1] ${message}`);
+    this.loggerService.info(`[Data L1] ${message}`);
   }
 
   private async buildNodeEnvVariables() {
@@ -115,7 +115,7 @@ export class DataL1 {
       validatorDl1.currentNode,
       Layers.DL1,
       NodeStatuses.READY_TO_JOIN,
-      this.logger,
+      this.loggerService,
     );
     await validatorDl1.joinNodeToCluster(this.currentNode);
   }
@@ -226,7 +226,7 @@ export class DataL1 {
       this.currentNode,
       Layers.DL1,
       NodeStatuses.READY,
-      this.logger,
+      this.loggerService,
     );
     const promises = [];
     for (const validatorHost of validatorHosts) {

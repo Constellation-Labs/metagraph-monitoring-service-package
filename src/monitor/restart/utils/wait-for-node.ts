@@ -3,21 +3,21 @@ import axios from 'axios';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import { MetagraphNode } from '@interfaces/services/metagraph/IMetagraphService';
 import { AvailableLayers } from '@shared/constants';
-import { Configs } from 'src/MonitoringConfiguration';
+import { Config } from 'src/MonitoringConfiguration';
 
 import sleep from './sleep';
 
 export default async (
-  config: Configs,
+  config: Config,
   metagraphNode: MetagraphNode,
   layer: AvailableLayers,
   state: string,
-  logger: ILoggerService,
+  loggerService: ILoggerService,
 ): Promise<boolean | undefined> => {
   const port = config.metagraph.layers[layer].ports.public;
   const LIMIT = 100;
   const url = `http://${metagraphNode.ip}:${port}/node/info`;
-  logger.info(
+  loggerService.info(
     `Checking if node ${metagraphNode.ip} on layer ${layer} is ${state}`,
   );
 
@@ -35,7 +35,7 @@ export default async (
         );
       }
 
-      logger.info(
+      loggerService.info(
         `Node ${metagraphNode.ip} on layer ${layer} not ${state} yet, waiting 5s (${idx + 1}/${LIMIT})`,
       );
       await sleep(5 * 1000);
@@ -46,7 +46,7 @@ export default async (
         );
       }
 
-      logger.info(
+      loggerService.info(
         `Node ${metagraphNode.ip} on layer ${layer} not ${state} yet, waiting 5s (${idx + 1}/${LIMIT})`,
       );
       await sleep(5 * 1000);

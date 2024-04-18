@@ -17,18 +17,18 @@ export default class Ssh2Service implements ISshService {
   nodeNumber: number;
   connection: Client;
   metagraphNode: MetagraphNode;
-  logger: ILoggerService;
+  loggerService: ILoggerService;
 
   constructor(
     nodeNumber: number,
     metagraphNode: MetagraphNode,
-    logger: ILoggerService,
+    loggerService: ILoggerService,
     defaultPath?: string,
   ) {
     this.nodeNumber = nodeNumber;
     this.ip = metagraphNode.ip;
     this.username = metagraphNode.username;
-    this.logger = logger;
+    this.loggerService = loggerService;
     const myFilePath = path.join(process.cwd(), metagraphNode.privateKeyPath);
     this.privateKey = fs.readFileSync(myFilePath);
     this.defaultPath = defaultPath;
@@ -38,13 +38,14 @@ export default class Ssh2Service implements ISshService {
 
   private async customLogger(message: string, level: 'info' | 'error') {
     if (level === 'error') {
-      this.logger.error(`[Ssh2Service] ${message}`);
+      this.loggerService.error(`[Ssh2Service] ${message}`);
     } else {
-      this.logger.info(`[Ssh2Service] ${message}`);
+      this.loggerService.info(`[Ssh2Service] ${message}`);
     }
   }
 
   public async setConnection() {
+    this.connection = new Client();
     await new Promise((resolve, reject) => {
       this.connection
         .connect({
@@ -105,6 +106,7 @@ export default class Ssh2Service implements ISshService {
   }
 
   public async destroyConnection() {
+    (await this.connection).end();
     (await this.connection).destroy();
   }
 }

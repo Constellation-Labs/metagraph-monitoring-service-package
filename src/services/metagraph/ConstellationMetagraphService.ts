@@ -7,24 +7,24 @@ import IMetagraphService, {
   MetagraphSnapshotInfo,
 } from '@interfaces/services/metagraph/IMetagraphService';
 import { NodeStatuses } from '@shared/constants';
-import { MonitoringConfiguration, Configs } from 'src/MonitoringConfiguration';
+import { MonitoringConfiguration, Config } from 'src/MonitoringConfiguration';
 
 export default class ConstellationMetagraphService
   implements IMetagraphService
 {
-  config: Configs;
+  config: Config;
   metagraphId: string;
   nodes: MetagraphNode[];
-  networName: string;
-  logger: ILoggerService;
+  networkName: string;
+  loggerService: ILoggerService;
   metagraphSnapshotInfo: MetagraphSnapshotInfo;
 
   constructor(monitoringConfiguration: MonitoringConfiguration) {
-    this.config = monitoringConfiguration.configs;
+    this.config = monitoringConfiguration.config;
     this.metagraphId = this.config.metagraph.id;
     this.nodes = this.config.metagraph.nodes;
-    this.networName = this.config.network.name;
-    this.logger = monitoringConfiguration.logger;
+    this.networkName = this.config.network.name;
+    this.loggerService = monitoringConfiguration.loggerService;
     this.metagraphSnapshotInfo = {
       lastSnapshotTimestamp: 0,
       lastSnapshotOrdinal: 0,
@@ -33,11 +33,11 @@ export default class ConstellationMetagraphService
   }
 
   private async customLogger(message: string) {
-    this.logger.info(`[ConstellationMetagraphService] ${message}`);
+    this.loggerService.info(`[ConstellationMetagraphService] ${message}`);
   }
 
   async setLastMetagraphInfo(): Promise<void> {
-    const beUrl = `https://be-${this.networName}.constellationnetwork.io/currency/${this.metagraphId}/snapshots/latest`;
+    const beUrl = `https://be-${this.networkName}.constellationnetwork.io/currency/${this.metagraphId}/snapshots/latest`;
     try {
       const response = await axios.get(beUrl);
       const lastSnapshotTimestamp: number = response.data.data.timestamp;

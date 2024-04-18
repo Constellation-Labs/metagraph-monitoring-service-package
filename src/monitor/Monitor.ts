@@ -5,18 +5,18 @@ import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
-import { MonitoringConfiguration, Configs } from 'src/MonitoringConfiguration';
+import { MonitoringConfiguration, Config } from 'src/MonitoringConfiguration';
 
 import ForceMetagraphRestart from './restart/conditions/ForceMetagraphRestart';
 
-export default class CheckMetagraphHealth {
+export default class Monitor {
   public monitoringConfiguration: MonitoringConfiguration;
-  public config: Configs;
+  public config: Config;
   public sshServices: ISshService[];
   public metagraphService: IMetagraphService;
   public globalNetworkService: IGlobalNetworkService;
   public seedlistService: ISeedlistService;
-  public logger: ILoggerService;
+  public loggerService: ILoggerService;
   public alertService: IAlertService;
   public restartConditions: IRestartCondition[];
 
@@ -27,12 +27,12 @@ export default class CheckMetagraphHealth {
     forceRestart: boolean,
   ) {
     this.monitoringConfiguration = monitoringConfiguration;
-    this.config = monitoringConfiguration.configs;
+    this.config = monitoringConfiguration.config;
     this.sshServices = monitoringConfiguration.sshServices;
     this.metagraphService = monitoringConfiguration.metagraphService;
     this.globalNetworkService = monitoringConfiguration.globalNetworkService;
     this.seedlistService = monitoringConfiguration.seedlistService;
-    this.logger = monitoringConfiguration.logger;
+    this.loggerService = monitoringConfiguration.loggerService;
     this.alertService = monitoringConfiguration.alertService;
     this.forceRestart = forceRestart;
     this.restartConditions = monitoringConfiguration.restartConditions;
@@ -45,18 +45,20 @@ export default class CheckMetagraphHealth {
 
   async execute() {
     try {
-      this.logger.info(
+      this.loggerService.info(
         `##################### STARTING CHECK METAGRAPH HEALTH #####################`,
       );
 
-      this.logger.info('Getting valid global network reference source node');
+      this.loggerService.info(
+        'Getting valid global network reference source node',
+      );
       await this.globalNetworkService.setReferenceSourceNode();
 
-      this.logger.info('Getting last metagraph snapshot info');
+      this.loggerService.info('Getting last metagraph snapshot info');
       await this.metagraphService.setLastMetagraphInfo();
 
       if (this.forceRestart) {
-        this.logger.info(
+        this.loggerService.info(
           'Force restart provided, starting the complete restart of metagraph',
         );
 
@@ -74,7 +76,7 @@ export default class CheckMetagraphHealth {
         return;
       }
 
-      this.logger.info(`Checking conditions to metagraph restart`);
+      this.loggerService.info(`Checking conditions to metagraph restart`);
       for (const restartCondition of this.restartConditions) {
         try {
           const shoulRestartInfo = await restartCondition.shouldRestart();
@@ -84,7 +86,7 @@ export default class CheckMetagraphHealth {
               restartCondition.name,
             );
 
-            this.logger.info(
+            this.loggerService.info(
               `Condition ${restartCondition.name} detected, triggering restart...`,
             );
 
@@ -93,19 +95,19 @@ export default class CheckMetagraphHealth {
             return;
           }
         } catch (e) {
-          this.logger.warn(
+          this.loggerService.warn(
             `Could not get restart condition: ${restartCondition}, skipping`,
           );
           continue;
         }
       }
 
-      this.logger.info(`Metagraph is healthy`);
+      this.loggerService.info(`Metagraph is healthy`);
       await this.closeRemoteAlerts();
       return;
     } catch (error: unknown) {
       if (error instanceof Error) {
-        this.logger.error(
+        this.loggerService.error(
           `Error when checking metagraph health: ${error.message}`,
         );
         await this.alertService.createRestartFailed(error.message);

@@ -16,7 +16,7 @@ export default interface IGlobalNetworkService {
   nodes: NetworkNode[];
   beUrl: string;
   referenceSourceNode: NetworkNode;
-  logger: ILoggerService;
+  loggerService: ILoggerService;
 
   getLatestGlobalSnapshotOfNetwork(): Promise<GlobalSnapshotInfo>;
   checkIfSnapshotExistsOnNode(

@@ -14,10 +14,10 @@ export default class ConstellationGlobalNetworkService
   nodes: NetworkNode[];
   beUrl: string;
   referenceSourceNode: NetworkNode;
-  logger: ILoggerService;
+  loggerService: ILoggerService;
 
   constructor(monitoringConfiguration: MonitoringConfiguration) {
-    const { name, nodes } = monitoringConfiguration.configs.network;
+    const { name, nodes } = monitoringConfiguration.config.network;
     this.name = name;
     if (!nodes || Object.keys(nodes).length === 0) {
       throw Error(`Could not find nodes of network: ${name}`);
@@ -25,11 +25,11 @@ export default class ConstellationGlobalNetworkService
     this.nodes = nodes;
     this.beUrl = `https://be-${name}.constellationnetwork.io/global-snapshots/latest`;
     this.referenceSourceNode = { ip: '', id: '', port: 0 };
-    this.logger = monitoringConfiguration.logger;
+    this.loggerService = monitoringConfiguration.loggerService;
   }
 
   private async customLogger(message: string) {
-    this.logger.info(`[ConstellationGlobalNetworkService] ${message}`);
+    this.loggerService.info(`[ConstellationGlobalNetworkService] ${message}`);
   }
 
   async getLatestGlobalSnapshotOfNetwork(): Promise<GlobalSnapshotInfo> {

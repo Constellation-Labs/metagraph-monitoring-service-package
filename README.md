@@ -14,13 +14,14 @@ This repository hosts the Metagraph Monitoring Service package. This package is 
 
 ### User with Password-less Sudo Privileges
 * This application will need to perform several operations, such as creating/writing files and terminating processes. To ensure everything functions correctly, the specified user on the monitoring instance and the nodes must have password-less sudo privileges.
+* The SSH Key needs to have access to the node
 * Refer to  [this document](https://gcore.com/learning/how-to-disable-password-for-sudo-command/) to learn how to enable password-less sudo for a user. 
 
 ## Installation
 
 After cloning the repository, ensure you fetch all the dependencies. Please make sure you are using Node.js version 18 or higher. To install the dependencies, simply run the following command:
 
-`yarn` 
+`yarn` or `npm install`
 
 This will download all the necessary dependencies and populate the `node_modules` folder.
 
@@ -30,10 +31,7 @@ To run this service, you must provide the necessary configuration in the file: `
 *   **`metagraph.id`**: The unique identifier for your metagraph.
 *   **`metagraph.name`**: The name of your metagraph.
 *   **`metagraph.version`**: The version of your metagraph.
-*  **`metagraph.restart_conditions`**: Specifies the conditions under which your metagraph should restart. These conditions are located in the directory: `src/jobs/restart/conditions`. To add new conditions:
-    *   Implement the `IRestartCondition` interface.
-    *   Export your condition in `src/jobs/restart/conditions/index.ts`.
-    *   Add your condition to this field.
+*   **`metagraph.default_restart_conditions`**: Specifies the conditions under which your metagraph should restart. These conditions are located in the directory: `src/jobs/restart/conditions`. 
     *   By default, there are two conditions:
         *   `SnapshotStopped`: Triggers if your metagraph stops producing snapshots.
         *   `UnhealthyNodes`: Triggers if your metagraph nodes become unhealthy.
@@ -57,10 +55,8 @@ We offer a suite of interfaces that allow you to customize the restart flow for 
 
 *  **`IRestartCondition`**: Use this interface to add new restart conditions to your metagraph. We currently implement this interface with two conditions:
     *   **`SnapshotStopped`**: Activates if your metagraph stops producing snapshots.
-    *   **`UnhealthyNodes`**: Activates if your metagraph nodes become unhealthy. To add new conditions:
-	    *   Implement the `IRestartCondition` interface.
-	    *   Export your condition in `src/jobs/restart/conditions/index.ts`.
-	    *   Add your condition to the respective field.
+    *   **`UnhealthyNodes`**: Activates if your metagraph nodes become unhealthy. 
+       
 *  **`IAlertService`**: This interface allows the addition of new alert services to your restart mechanism. By default, we offer two options:
     *   **`NoAlertsService`**: Use this if no external alert system is required.
     *   **`OpsgenieAlertService`**: An example service for alerting via Opsgenie.
@@ -78,3 +74,78 @@ We offer a suite of interfaces that allow you to customize the restart flow for 
     *   **`GithubSeedlistService`**: Retrieves seedlist information from a GitHub release.
 
 *   **`ISshService`**: This interface is for choosing your SSH communication tool with the nodes. The default implementation uses the `ssh2` library in NodeJS, available in `Ssh2Service`.
+
+
+## Customizing Services
+
+You can customize services further by implementing several interfaces such as `IAlertService`, `ILoggerService`, `IGlobalNetworkService`, `IMetagraphService`, `ISeedlistService`, and `ISshService`. All these interfaces are available in the following import statement:
+
+```
+import {
+  IAlertService,
+  ILoggerService,
+  IGlobalNetworkService,
+  IMetagraphService,
+  ISeedlistService,
+  ISshService,
+} from '@interfaces';
+``` 
+
+Once you implement your services, provide them to the constructor as shown below:
+```
+import MonitoringApp from 'src';
+import { ILoggerService } from '@interfaces';
+
+class MyCustomLoggerService implements ILoggerService {
+  constructor() {}
+
+  info(message: string, meta?: unknown): void {
+    console.log(message, meta);
+  }
+
+  warn(message: string, meta?: unknown): void {
+    console.log(message, meta);
+  }
+
+  error(message: string, meta?: unknown): void {
+    console.error(message, meta);
+  }
+}
+
+const myCustomLogger = new MyCustomLoggerService();
+const monitoring = new MonitoringApp(
+  ...,
+  ...,
+  ...,
+  {
+    logger: myCustomLogger,
+  },
+);
+```
+
+## Customizing Restart Conditions
+
+You can also customize your restart conditions. Import and implement a custom restart interface as follows:
+```
+import { IRestartCondition } from '@interfaces';
+
+class MyCustomRestartCondition implements IRestartCondition {
+  name: string;
+  config: MonitoringConfigs;
+  sshServices: ISshService[];
+  metagraphService: IMetagraphService;
+  globalNetworkService: IGlobalNetworkService;
+  seedlistService: ISeedlistService;
+  logger: ILoggerService;
+  shouldRestart(): Promise<ShouldRestartInfo>;
+  triggerRestart(): Promise<void>;
+}
+const myCustomRestartCondition = new MyCustomRestartCondition();
+const monitoring = new MonitoringApp(
+  ...,
+  ...,
+  ...,
+  ...,
+  [myCustomRestartCondition],
+);
+```

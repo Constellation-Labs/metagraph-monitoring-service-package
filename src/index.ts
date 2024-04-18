@@ -6,19 +6,19 @@ import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService'
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 
-import CheckMetagraphHealth from './check-metagraph-health/CheckMetagraphHealth';
-import { MonitoringConfiguration, Configs } from './MonitoringConfiguration';
+import Monitor from './monitor/Monitor';
+import { MonitoringConfiguration, Config } from './MonitoringConfiguration';
 
 export default class MonitoringApp {
   public configuration: MonitoringConfiguration;
   public forceRestart: boolean;
 
   constructor(
-    configs: Configs,
+    config: Config,
     forceRestart: boolean = false,
     devMode: boolean = false,
     services?: {
-      logger?: ILoggerService;
+      loggerService?: ILoggerService;
       sshServices?: ISshService[];
       metagraphService?: IMetagraphService;
       globalNetworkService?: IGlobalNetworkService;
@@ -28,7 +28,7 @@ export default class MonitoringApp {
     customRestartConditions?: IRestartCondition[],
   ) {
     this.configuration = new MonitoringConfiguration(
-      configs,
+      config,
       devMode,
       services,
       customRestartConditions,
@@ -59,13 +59,10 @@ export default class MonitoringApp {
   public async checkMetagraphHealthOnce() {
     try {
       await this.initializeSshConnections();
-      const checkMetagraphHealth = new CheckMetagraphHealth(
-        this.configuration,
-        this.forceRestart,
-      );
-      await checkMetagraphHealth.execute();
+      const monitor = new Monitor(this.configuration, this.forceRestart);
+      await monitor.execute();
     } catch (e) {
-      this.configuration.logger.error(
+      this.configuration.loggerService.error(
         `Error when executing checkMetagraphHealth: ${e}`,
       );
     } finally {
@@ -80,14 +77,14 @@ export default class MonitoringApp {
         await this.checkMetagraphHealthOnce();
         this.forceRestart = false;
       } catch (error) {
-        this.configuration.logger.error(
+        this.configuration.loggerService.error(
           `Error when checkMetagraphHealth: ${error}`,
         );
       }
       await new Promise((resolve) =>
         setTimeout(
           resolve,
-          this.configuration.configs.check_healthy_interval_in_minutes *
+          this.configuration.config.check_healthy_interval_in_minutes *
             60 *
             1000,
         ),

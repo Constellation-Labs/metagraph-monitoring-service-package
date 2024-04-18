@@ -1,12 +1,12 @@
-import { Configs } from 'src/MonitoringConfiguration';
+import { Config } from 'src/MonitoringConfiguration';
 
 import ILoggerService from '../logger/ILoggerService';
 
 export type AlertType = 'RestartStarted' | 'RestartFailed';
 
 export default interface IAlertService {
-  logger: ILoggerService;
-  config: Configs;
+  loggerService: ILoggerService;
+  config: Config;
 
   createRestartStarted(
     restartType: string,

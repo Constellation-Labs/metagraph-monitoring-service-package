@@ -5,19 +5,19 @@ import ISeedlistService, {
   SeedListInfo,
 } from '@interfaces/services/seedlist/ISeedlistService';
 import { AvailableLayers } from '@shared/constants';
-import { MonitoringConfiguration, Configs } from 'src/MonitoringConfiguration';
+import { MonitoringConfiguration, Config } from 'src/MonitoringConfiguration';
 
 export default class GithubSeedlistService implements ISeedlistService {
-  logger: ILoggerService;
-  config: Configs;
+  loggerService: ILoggerService;
+  config: Config;
 
   constructor(monitoringConfiguration: MonitoringConfiguration) {
-    this.logger = monitoringConfiguration.logger;
-    this.config = monitoringConfiguration.configs;
+    this.loggerService = monitoringConfiguration.loggerService;
+    this.config = monitoringConfiguration.config;
   }
 
   private async customLogger(message: string) {
-    this.logger.info(`[GithubSeedlistService] ${message}`);
+    this.loggerService.info(`[GithubSeedlistService] ${message}`);
   }
 
   async checkIfSeedlistExists(url: string): Promise<boolean> {
@@ -34,7 +34,7 @@ export default class GithubSeedlistService implements ISeedlistService {
 
       return false;
     } catch (error) {
-      this.logger.error(`Seedlist not found in url: ${url}`);
+      this.loggerService.error(`Seedlist not found in url: ${url}`);
       return false;
     }
   }

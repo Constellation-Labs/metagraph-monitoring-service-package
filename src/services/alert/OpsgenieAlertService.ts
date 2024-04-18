@@ -5,11 +5,11 @@ import IAlertService, {
 } from '@interfaces/services/alert/IAlertService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import { NetworkNames } from '@shared/constants';
-import { MonitoringConfiguration, Configs } from 'src/MonitoringConfiguration';
+import { MonitoringConfiguration, Config } from 'src/MonitoringConfiguration';
 
 export default class OpsgenieAlertService implements IAlertService {
-  logger: ILoggerService;
-  config: Configs;
+  loggerService: ILoggerService;
+  config: Config;
 
   private opsgenie_alert_url: string = 'https://api.opsgenie.com/v2/alerts';
   private opsgenie_api_key: string;
@@ -24,13 +24,13 @@ export default class OpsgenieAlertService implements IAlertService {
     monitoringConfiguration: MonitoringConfiguration,
     opsgenieAlertKey: string,
   ) {
-    this.config = monitoringConfiguration.configs;
-    this.logger = monitoringConfiguration.logger;
+    this.config = monitoringConfiguration.config;
+    this.loggerService = monitoringConfiguration.loggerService;
     this.opsgenie_api_key = opsgenieAlertKey;
   }
 
   private customLog(message: string) {
-    this.logger.info(`[OpsgenieAlertService] ${message}`);
+    this.loggerService.info(`[OpsgenieAlertService] ${message}`);
   }
 
   private buildStartedRestartAlertBody = (
@@ -184,7 +184,7 @@ export default class OpsgenieAlertService implements IAlertService {
         },
       );
     } catch (e) {
-      this.logger.warn(`Alert ${alias} does not exists, skipping`);
+      this.loggerService.warn(`Alert ${alias} does not exists, skipping`);
       return;
     }
 

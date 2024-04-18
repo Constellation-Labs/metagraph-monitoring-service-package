@@ -6,14 +6,14 @@ import { AvailableLayers } from '@shared/constants';
 import { MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
 export default class NoSeedlistService implements ISeedlistService {
-  logger: ILoggerService;
+  loggerService: ILoggerService;
 
   constructor(monitoringConfiguration: MonitoringConfiguration) {
-    this.logger = monitoringConfiguration.logger;
+    this.loggerService = monitoringConfiguration.loggerService;
   }
 
   private async customLogger(message: string) {
-    this.logger.info(`[NoSeedlistService] ${message}`);
+    this.loggerService.info(`[NoSeedlistService] ${message}`);
   }
 
   async buildSeedlistInformation(

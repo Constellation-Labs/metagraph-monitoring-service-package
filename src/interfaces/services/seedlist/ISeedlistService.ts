@@ -8,6 +8,6 @@ export type SeedListInfo = {
 };
 
 export default interface ISeedlistService {
-  logger: ILoggerService;
+  loggerService: ILoggerService;
   buildSeedlistInformation(layer: AvailableLayers): Promise<SeedListInfo>;
 }

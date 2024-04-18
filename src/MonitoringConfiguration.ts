@@ -11,10 +11,9 @@ import ConsoleLoggerService from '@services/logger/ConsoleLoggerService';
 import FileLoggerService from '@services/logger/FileLoggerService';
 import ConstellationMetagraphService from '@services/metagraph/ConstellationMetagraphService';
 import NoSeedlistService from '@services/seedlist/NoSeedlistService';
-import { NetworkNames } from '@shared/constants';
 
-import SnapshotsStopped from './check-metagraph-health/restart/conditions/SnapshotsStopped';
-import UnhealthyNodes from './check-metagraph-health/restart/conditions/UnhealthyNodes';
+import SnapshotsStopped from './monitor/restart/conditions/SnapshotsStopped';
+import UnhealthyNodes from './monitor/restart/conditions/UnhealthyNodes';
 import { Ssh2Service } from './services';
 
 type MetagraphNodesProps = {
@@ -63,27 +62,27 @@ type NetworkProps = {
   nodes: NetworkNode[];
 };
 
-export type Configs = {
+export type Config = {
   metagraph: MetagraphProps;
   network: NetworkProps;
   check_healthy_interval_in_minutes: number;
 };
 
 export class MonitoringConfiguration {
-  public configs: Configs;
+  public config: Config;
   public sshServices: ISshService[];
   public metagraphService: IMetagraphService;
   public globalNetworkService: IGlobalNetworkService;
   public seedlistService: ISeedlistService;
-  public logger: ILoggerService;
+  public loggerService: ILoggerService;
   public alertService: IAlertService;
   public restartConditions: IRestartCondition[];
 
   constructor(
-    configs: Configs,
+    config: Config,
     devMode: boolean = false,
     services?: {
-      logger?: ILoggerService;
+      loggerService?: ILoggerService;
       sshServices?: ISshService[];
       metagraphService?: IMetagraphService;
       globalNetworkService?: IGlobalNetworkService;
@@ -92,17 +91,15 @@ export class MonitoringConfiguration {
     },
     customRestartConditions?: IRestartCondition[],
   ) {
-    this.configs = configs;
+    this.config = config;
 
-    this.validateNetwork();
-
-    this.logger =
-      services?.logger ?? devMode
+    this.loggerService =
+      services?.loggerService ?? devMode
         ? new ConsoleLoggerService()
         : new FileLoggerService();
 
     this.sshServices =
-      services?.sshServices ?? this.buildSshServices(this.logger);
+      services?.sshServices ?? this.buildSshServices(this.loggerService);
 
     this.metagraphService =
       services?.metagraphService ?? new ConstellationMetagraphService(this);
@@ -122,7 +119,7 @@ export class MonitoringConfiguration {
   }
 
   private buildSshServices(logger: ILoggerService): ISshService[] {
-    const { nodes: metagraphNodes } = this.configs.metagraph;
+    const { nodes: metagraphNodes } = this.config.metagraph;
     const sshServices: ISshService[] = [];
     for (let idx = 0; idx < metagraphNodes.length; idx++) {
       const sshService = new Ssh2Service(
@@ -144,7 +141,7 @@ export class MonitoringConfiguration {
       ? [...customRestartConditions]
       : [];
 
-    const { default_restart_conditions } = this.configs.metagraph;
+    const { default_restart_conditions } = this.config.metagraph;
     if (default_restart_conditions.includes('SnapshotsStopped')) {
       restartConditions.push(new SnapshotsStopped(this));
     }
@@ -154,19 +151,5 @@ export class MonitoringConfiguration {
     }
 
     return restartConditions;
-  }
-
-  private validateNetwork() {
-    const validNetworkNames: NetworkNames[] = [
-      'mainnet',
-      'integrationnet',
-      'testnet',
-    ];
-
-    if (
-      !validNetworkNames.includes(this.configs.network.name as NetworkNames)
-    ) {
-      throw Error('Invalid network');
-    }
   }
 }

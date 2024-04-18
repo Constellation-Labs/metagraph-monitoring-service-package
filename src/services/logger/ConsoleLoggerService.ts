@@ -3,10 +3,10 @@ import { createLogger, format, transports } from 'winston';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 
 export default class ConsoleLoggerService implements ILoggerService {
-  private logger;
+  private loggerService;
 
   constructor() {
-    this.logger = createLogger({
+    this.loggerService = createLogger({
       format: format.combine(format.timestamp(), format.json()),
       transports: [
         new transports.Console({
@@ -22,14 +22,14 @@ export default class ConsoleLoggerService implements ILoggerService {
   }
 
   info(message: string, meta?: unknown): void {
-    this.logger.info(message, meta);
+    this.loggerService.info(message, meta);
   }
 
   warn(message: string, meta?: unknown): void {
-    this.logger.warn(message, meta);
+    this.loggerService.warn(message, meta);
   }
 
   error(message: string, meta?: unknown): void {
-    this.logger.error(message, meta);
+    this.loggerService.error(message, meta);
   }
 }

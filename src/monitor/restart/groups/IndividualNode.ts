@@ -1,12 +1,9 @@
 import { NetworkNode } from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
-import IMetagraphService, {
-  MetagraphNode,
-} from '@interfaces/services/metagraph/IMetagraphService';
-import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
+import { MetagraphNode } from '@interfaces/services/metagraph/IMetagraphService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 import { AvailableLayers, Layers, NodeStatuses } from '@shared/constants';
-import { Configs, MonitoringConfiguration } from 'src/MonitoringConfiguration';
+import { Config, MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
 import { CurrencyL1 } from '../layers/CurrencyL1';
 import { DataL1 } from '../layers/DataL1';
@@ -17,11 +14,9 @@ import waitForNode from '../utils/wait-for-node';
 
 export class IndividualNode {
   private monitoringConfiguration: MonitoringConfiguration;
-  private config: Configs;
+  private config: Config;
   private sshService: ISshService;
-  private metagraphService: IMetagraphService;
-  private seedlistService: ISeedlistService;
-  private logger: ILoggerService;
+  private loggerService: ILoggerService;
 
   referenceMetagraphNode: MetagraphNode;
   referenceSourceNode: NetworkNode;
@@ -35,18 +30,16 @@ export class IndividualNode {
     layer: AvailableLayers,
   ) {
     this.monitoringConfiguration = monitoringConfiguration;
-    this.config = monitoringConfiguration.configs;
+    this.config = monitoringConfiguration.config;
     this.sshService = sshService;
-    this.metagraphService = monitoringConfiguration.metagraphService;
-    this.seedlistService = monitoringConfiguration.seedlistService;
-    this.logger = monitoringConfiguration.logger;
+    this.loggerService = monitoringConfiguration.loggerService;
     this.referenceMetagraphNode = referenceMetagraphNode;
     this.referenceSourceNode = referenceSourceNode;
     this.layer = layer;
   }
 
   private customLogger(message: string) {
-    this.logger.info(`[IndividualNode] ${message}`);
+    this.loggerService.info(`[IndividualNode] ${message}`);
   }
 
   private async killProcess() {
@@ -92,7 +85,7 @@ export class IndividualNode {
         metagraphL0.currentNode,
         this.layer,
         NodeStatuses.READY_TO_JOIN,
-        this.logger,
+        this.loggerService,
       );
       await metagraphL0.joinNodeToCluster(this.referenceMetagraphNode);
       return;
@@ -111,7 +104,7 @@ export class IndividualNode {
         currencyL1.currentNode,
         this.layer,
         NodeStatuses.READY_TO_JOIN,
-        this.logger,
+        this.loggerService,
       );
       await currencyL1.joinNodeToCluster(this.referenceMetagraphNode);
       return;
@@ -130,7 +123,7 @@ export class IndividualNode {
         dataL1.currentNode,
         this.layer,
         NodeStatuses.READY_TO_JOIN,
-        this.logger,
+        this.loggerService,
       );
       await dataL1.joinNodeToCluster(this.referenceMetagraphNode);
       return;

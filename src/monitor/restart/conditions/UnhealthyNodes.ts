@@ -7,7 +7,7 @@ import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService'
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 import { Layers } from '@shared/constants';
-import { Configs, MonitoringConfiguration } from 'src/MonitoringConfiguration';
+import { Config, MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
 import { FullLayer } from '../groups/FullLayer';
 import { IndividualNode } from '../groups/IndividualNode';
@@ -16,12 +16,12 @@ export default class UnhealthyNodes implements IRestartCondition {
   private monitoringConfiguration: MonitoringConfiguration;
 
   name = 'Unhealthy Nodes';
-  config: Configs;
+  config: Config;
   sshServices: ISshService[];
   metagraphService: IMetagraphService;
   globalNetworkService: IGlobalNetworkService;
   seedlistService: ISeedlistService;
-  logger: ILoggerService;
+  loggerService: ILoggerService;
 
   private layerRestarted: boolean = false;
 
@@ -31,16 +31,16 @@ export default class UnhealthyNodes implements IRestartCondition {
 
   constructor(monitoringConfiguration: MonitoringConfiguration) {
     this.monitoringConfiguration = monitoringConfiguration;
-    this.config = monitoringConfiguration.configs;
+    this.config = monitoringConfiguration.config;
     this.sshServices = monitoringConfiguration.sshServices;
     this.metagraphService = monitoringConfiguration.metagraphService;
     this.globalNetworkService = monitoringConfiguration.globalNetworkService;
     this.seedlistService = monitoringConfiguration.seedlistService;
-    this.logger = monitoringConfiguration.logger;
+    this.loggerService = monitoringConfiguration.loggerService;
   }
 
   private async customLogger(message: string) {
-    this.logger.info(`[UnhealthyNodes] ${message}`);
+    this.loggerService.info(`[UnhealthyNodes] ${message}`);
   }
 
   private async tryRestartFullLayer() {

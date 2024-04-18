@@ -1,4 +1,4 @@
-import { Configs } from 'src/MonitoringConfiguration';
+import { Config } from 'src/MonitoringConfiguration';
 
 import ILoggerService from '../logger/ILoggerService';
 
@@ -28,11 +28,11 @@ export type MetagraphNodeInfo = {
 };
 
 export default interface IMetagraphService {
-  config: Configs;
+  config: Config;
   metagraphId: string;
   nodes: MetagraphNode[];
-  networName: string;
-  logger: ILoggerService;
+  networkName: string;
+  loggerService: ILoggerService;
   metagraphSnapshotInfo: MetagraphSnapshotInfo;
 
   setLastMetagraphInfo(): Promise<void>;
