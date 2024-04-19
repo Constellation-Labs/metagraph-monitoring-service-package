@@ -1,5 +1,5 @@
 {
-  "name": "@constellationnetwork/metagraph-monitoring-service",
+  "name": "@constellation-network/metagraph-monitoring-service",
   "version": "0.1.0",
   "description": "Constellation metagraph monitoring service",
   "main": "./dist/index.js",
