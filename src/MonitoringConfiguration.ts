@@ -77,7 +77,7 @@ export class MonitoringConfiguration {
   public seedlistService: ISeedlistService;
   public loggerService: ILoggerService;
   public alertService: IAlertService;
-  public restartConditions: IRestartCondition[];
+  private restartConditions: IRestartCondition[];
 
   constructor(
     config: Config,
@@ -152,5 +152,15 @@ export class MonitoringConfiguration {
     }
 
     return restartConditions;
+  }
+
+  setRestartConditions(customRestartConditions?: IRestartCondition[]) {
+    this.restartConditions = this.buildRestartConditions(
+      customRestartConditions,
+    );
+  }
+
+  getRestartConditions(): IRestartCondition[] {
+    return this.restartConditions;
   }
 }

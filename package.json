@@ -17,6 +17,18 @@
     "./services": {
       "require": "./dist/services.js",
       "import": "./dist/services.mjs"
+    },
+    "./default-restart-conditions": {
+      "require": "./dist/default-restart-conditions.js",
+      "import": "./dist/default-restart-conditions.mjs"
+    },
+    "./restart-groups": {
+      "require": "./dist/restart-groups.js",
+      "import": "./dist/restart-groups.mjs"
+    },
+    "./shared": {
+      "require": "./dist/shared.js",
+      "import": "./dist/shared.mjs"
     }
   },
   "scripts": {

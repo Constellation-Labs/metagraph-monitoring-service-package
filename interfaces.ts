@@ -6,6 +6,7 @@ import {
   IMetagraphService,
   ISeedlistService,
   ISshService,
+  ShouldRestartInfo,
 } from './src/interfaces';
 
 export type {
@@ -17,3 +18,5 @@ export type {
   ISeedlistService,
   ISshService,
 };
+
+export { ShouldRestartInfo };

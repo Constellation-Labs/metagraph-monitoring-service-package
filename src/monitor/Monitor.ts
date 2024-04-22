@@ -35,7 +35,7 @@ export default class Monitor {
     this.loggerService = monitoringConfiguration.loggerService;
     this.alertService = monitoringConfiguration.alertService;
     this.forceRestart = forceRestart;
-    this.restartConditions = monitoringConfiguration.restartConditions;
+    this.restartConditions = monitoringConfiguration.getRestartConditions();
   }
 
   private async closeRemoteAlerts() {

@@ -5,6 +5,9 @@ export default defineConfig({
     index: 'index.ts',
     interfaces: 'interfaces.ts',
     services: 'services.ts',
+    'default-restart-conditions': 'default-restart-conditions.ts',
+    'restart-groups': 'restart-groups.ts',
+    shared: 'shared.ts',
   },
   format: ['cjs', 'esm'], // Build for commonJS and ESmodules
   dts: true, // Generate declaration file (.d.ts)
