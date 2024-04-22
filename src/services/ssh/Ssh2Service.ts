@@ -11,6 +11,7 @@ import ISshService from '@interfaces/services/ssh/ISshService';
 export default class Ssh2Service implements ISshService {
   private ip: string;
   private username: string;
+  private password?: string;
   private privateKey: Buffer;
   private defaultPath?: string;
 
@@ -28,6 +29,7 @@ export default class Ssh2Service implements ISshService {
     this.nodeNumber = nodeNumber;
     this.ip = metagraphNode.ip;
     this.username = metagraphNode.username;
+    this.password = metagraphNode.password;
     this.loggerService = loggerService;
     const myFilePath = path.join(process.cwd(), metagraphNode.privateKeyPath);
     this.privateKey = fs.readFileSync(myFilePath);
@@ -52,6 +54,7 @@ export default class Ssh2Service implements ISshService {
           host: this.ip,
           port: 22,
           username: this.username,
+          password: this.password || '',
           privateKey: this.privateKey,
         })
         .on('ready', () => {

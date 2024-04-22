@@ -5,6 +5,7 @@ import ILoggerService from '../logger/ILoggerService';
 export type MetagraphNode = {
   ip: string;
   username: string;
+  password?: string;
   privateKeyPath: string;
   key_file: {
     name: string;

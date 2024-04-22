@@ -19,6 +19,7 @@ import { Ssh2Service } from './services';
 type MetagraphNodesProps = {
   ip: string;
   username: string;
+  password?: string;
   privateKeyPath: string;
   key_file: {
     name: string;
