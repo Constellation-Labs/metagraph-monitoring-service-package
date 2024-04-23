@@ -13,6 +13,7 @@ export default class Ssh2Service implements ISshService {
   private username: string;
   private password?: string;
   private privateKey: Buffer;
+  private privateKeyPassword?: string;
   private defaultPath?: string;
 
   nodeNumber: number;
@@ -33,6 +34,7 @@ export default class Ssh2Service implements ISshService {
     this.loggerService = loggerService;
     const myFilePath = path.join(process.cwd(), metagraphNode.privateKeyPath);
     this.privateKey = fs.readFileSync(myFilePath);
+    this.privateKeyPassword = metagraphNode.privateKeyPassword;
     this.defaultPath = defaultPath;
     this.metagraphNode = metagraphNode;
     this.connection = new Client();
@@ -56,6 +58,7 @@ export default class Ssh2Service implements ISshService {
           username: this.username,
           password: this.password || '',
           privateKey: this.privateKey,
+          passphrase: this.privateKeyPassword || '',
         })
         .on('ready', () => {
           this.customLogger(

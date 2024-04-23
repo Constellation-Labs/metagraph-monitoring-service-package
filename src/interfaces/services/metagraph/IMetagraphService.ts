@@ -7,6 +7,7 @@ export type MetagraphNode = {
   username: string;
   password?: string;
   privateKeyPath: string;
+  privateKeyPassword?: string;
   key_file: {
     name: string;
     alias: string;
