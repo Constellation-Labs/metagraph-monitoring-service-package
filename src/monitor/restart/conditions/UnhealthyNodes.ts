@@ -207,9 +207,9 @@ export default class UnhealthyNodes implements IRestartCondition {
           : this.dataL1NUnhealthyNodes.length === 3
             ? 'Full layer DL 1'
             : `Individual nodes. Unhealthy nodes:
-               ML0: ${this.metagraphL0UnhealthyNodes}
-               CL1: ${this.currencyL1UnhealthyNodes}
-               DL1: ${this.dataL1NUnhealthyNodes}
+               ML0: ${JSON.stringify(this.metagraphL0UnhealthyNodes.map((it) => it.metagraphNode.ip))}
+               CL1: ${JSON.stringify(this.currencyL1UnhealthyNodes.map((it) => it.metagraphNode.ip))}
+               DL1: ${JSON.stringify(this.dataL1NUnhealthyNodes.map((it) => it.metagraphNode.ip))}
             `;
     return {
       shouldRestart,
