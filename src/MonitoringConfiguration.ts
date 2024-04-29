@@ -138,9 +138,7 @@ export class MonitoringConfiguration {
   private buildRestartConditions(
     customRestartConditions?: IRestartCondition[],
   ): IRestartCondition[] {
-    const restartConditions = customRestartConditions
-      ? [...customRestartConditions]
-      : [];
+    let restartConditions = [];
 
     const { default_restart_conditions } = this.config.metagraph;
     if (default_restart_conditions.includes('SnapshotsStopped')) {
@@ -149,6 +147,10 @@ export class MonitoringConfiguration {
 
     if (default_restart_conditions.includes('UnhealthyNodes')) {
       restartConditions.push(new UnhealthyNodes(this));
+    }
+
+    if (customRestartConditions) {
+      restartConditions = [...restartConditions, ...customRestartConditions];
     }
 
     return restartConditions;

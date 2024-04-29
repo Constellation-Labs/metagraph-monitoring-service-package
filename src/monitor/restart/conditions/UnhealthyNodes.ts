@@ -154,6 +154,9 @@ export default class UnhealthyNodes implements IRestartCondition {
 
   async shouldRestart(): Promise<ShouldRestartInfo> {
     this.customLogger(`Checking if we have unhealthy nodes`);
+    this.metagraphL0UnhealthyNodes = [];
+    this.currencyL1UnhealthyNodes = [];
+    this.dataL1NUnhealthyNodes = [];
     for (const sshService of this.sshServices) {
       const { metagraphNode } = sshService;
       this.customLogger(`[ML0] Checking node ${metagraphNode.ip}`);
@@ -203,7 +206,11 @@ export default class UnhealthyNodes implements IRestartCondition {
           ? 'Full layer CL 1'
           : this.dataL1NUnhealthyNodes.length === 3
             ? 'Full layer DL 1'
-            : `Individual nodes`;
+            : `Individual nodes. Unhealthy nodes:
+               ML0: ${this.metagraphL0UnhealthyNodes}
+               CL1: ${this.currencyL1UnhealthyNodes}
+               DL1: ${this.dataL1NUnhealthyNodes}
+            `;
     return {
       shouldRestart,
       restartType,
