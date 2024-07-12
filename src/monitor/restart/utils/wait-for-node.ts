@@ -2,7 +2,7 @@ import axios from 'axios';
 
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import { MetagraphNode } from '@interfaces/services/metagraph/IMetagraphService';
-import { AvailableLayers } from '@shared/constants';
+import { AvailableLayers, NodeStatuses } from '@shared/constants';
 import { Config } from 'src/MonitoringConfiguration';
 
 import sleep from './sleep';
@@ -26,6 +26,10 @@ export default async (
       const response = await axios.get(url);
       const nodeState: string = response.data.state;
       if (nodeState === state) {
+        if (nodeState === NodeStatuses.READY_TO_JOIN) {
+          await sleep(10 * 1000);
+        }
+
         return true;
       }
 
