@@ -204,10 +204,9 @@ export class MetagraphL0 {
       NodeStatuses.READY,
       this.loggerService,
     );
-    const promises = [];
+
     for (const validatorHost of validatorHosts) {
-      promises.push(this.startAndJoinValidator(validatorHost));
+      await this.startAndJoinValidator(validatorHost);
     }
-    await Promise.all(promises);
   }
 }
