@@ -77,12 +77,13 @@ export default class Ssh2Service implements ISshService {
     });
   }
 
-  public async executeCommand(command: string): Promise<string> {
+  public async executeCommand(
+    command: string,
+    ignoreErrors = true,
+  ): Promise<string> {
     const conn = await this.connection;
     const commandParsed = this.defaultPath
-      ? `cd ${this.defaultPath}
-      sudo ${command}
-      `
+      ? `cd ${this.defaultPath} && sudo ${command}`
       : `sudo ${command}`;
 
     return new Promise((resolve, reject) => {
@@ -92,20 +93,30 @@ export default class Ssh2Service implements ISshService {
             `[Node ${this.nodeNumber}] Error when running command ${commandParsed}. Error: ${err}`,
             'error',
           );
-          reject(err);
-          return;
+          return reject(err);
         }
+
         let data = '';
+        let errorData = '';
+
         stream
-          .on('close', () => {
-            if (!data) {
-              resolve(data);
-              return;
+          .on('close', (code: number) => {
+            if (code !== 0 && !ignoreErrors) {
+              this.customLogger(
+                `[Node ${this.nodeNumber}] Command failed with code ${code}. Error: ${errorData}`,
+                'error',
+              );
+              return reject(
+                new Error(`Command failed with code ${code}: ${errorData}`),
+              );
             }
             resolve(data);
           })
           .on('data', (chunk: Buffer) => {
             data += chunk.toString();
+          })
+          .stderr.on('data', (chunk: Buffer) => {
+            errorData += chunk.toString();
           });
       });
     });
