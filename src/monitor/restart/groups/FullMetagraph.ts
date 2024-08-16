@@ -1,3 +1,5 @@
+import axios from 'axios';
+
 import { NetworkNode } from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
@@ -11,6 +13,12 @@ import { MetagraphL0 } from '../layers/MetagraphL0';
 import cleanupSnapshotsGreaterThanRollback from '../utils/cleanup-snapshots-greater-than-rollback';
 import killCurrentExecution from '../utils/kill-current-execution';
 import saveCurrentLogs from '../utils/save-current-logs';
+
+type LastMetagraphBlockExplorerResponse = {
+  data?: {
+    hash?: string;
+  };
+};
 
 export class FullMetagraph {
   private monitoringConfiguration: MonitoringConfiguration;
@@ -127,6 +135,57 @@ export class FullMetagraph {
     await Promise.all(promises);
   }
 
+  private async chooseRollbackNode(): Promise<ISshService> {
+    const { network, metagraph } = this.monitoringConfiguration.config;
+    const url = `https://be-${network.name}.constellationnetwork.io/currency/${metagraph.id}/snapshots/latest`;
+
+    let beResponse: LastMetagraphBlockExplorerResponse;
+    try {
+      const response = await axios.get(url);
+      beResponse = response.data;
+    } catch (error) {
+      throw new Error(
+        `Error fetching the last metagraph snapshot from block explorer: ${error}`,
+      );
+    }
+
+    const lastSnapshotHash = beResponse.data?.hash;
+    if (!lastSnapshotHash) {
+      throw new Error('Last metagraph snapshot hash not found');
+    }
+
+    this.customLogger(
+      `Last metagraph snapshot found in URL ${url}: ${lastSnapshotHash}`,
+    );
+
+    for (const sshService of this.sshServices) {
+      try {
+        const command = `
+        cd metagraph-l0
+        ls data/incremental_snapshot/${lastSnapshotHash}
+        `;
+
+        await sshService.executeCommand(command, false);
+
+        this.customLogger(
+          `Node ${sshService.metagraphNode.ip} will be the rollback node`,
+        );
+
+        return sshService;
+      } catch {
+        this.customLogger(
+          `Snapshot not found on node: ${sshService.metagraphNode.ip}`,
+        );
+      }
+    }
+
+    this.customLogger(
+      `No node contains the last snapshot ${lastSnapshotHash}. Defaulting to the first node to download from GL0`,
+    );
+
+    return this.sshServices[0];
+  }
+
   async performRestart() {
     await this.killProcesses();
     await this.moveLogs();
@@ -134,14 +193,16 @@ export class FullMetagraph {
 
     const { nodes: metagraphNodes } = this.config.metagraph;
 
-    const rollbackHost = this.sshServices.find((it) => it.nodeNumber === 1);
+    const rollbackHost = await this.chooseRollbackNode();
     if (!rollbackHost) {
       throw Error(
         `Could not get the rollback node from nodes: ${JSON.stringify(metagraphNodes)}`,
       );
     }
 
-    const validatorHosts = this.sshServices.filter((it) => it.nodeNumber !== 1);
+    const validatorHosts = this.sshServices.filter(
+      (it) => it.nodeNumber !== rollbackHost.nodeNumber,
+    );
 
     this.customLogger(
       `Rollback node: ${JSON.stringify(rollbackHost.metagraphNode)}`,
