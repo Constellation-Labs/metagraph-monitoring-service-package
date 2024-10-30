@@ -36,6 +36,7 @@ export default class OpsgenieAlertService implements IAlertService {
   private buildStartedRestartAlertBody = (
     restartType: string,
     restartReason: string,
+    lastMetagraphSnapshotOrdinal?: number,
   ): object => {
     const {
       name: metagraphName,
@@ -48,6 +49,7 @@ export default class OpsgenieAlertService implements IAlertService {
       .map((node, idx) => {
         const nodeInfo = `
       Node ${idx + 1} - IP: ${node.ip}
+      ${lastMetagraphSnapshotOrdinal ? `Last metagraph snapshot in block explorer: ${lastMetagraphSnapshotOrdinal}` : ``}
       Metagraph L0 - http://${node.ip}:${this.config.metagraph.layers.ml0.ports.public}/node/info
       ${!this.config.metagraph.layers.cl1.ignore_layer ? `Currency L1 - http://${node.ip}:${this.config.metagraph.layers.cl1.ports.public}/node/info` : ''}
       ${!this.config.metagraph.layers.dl1.ignore_layer ? `Data L1 - http://${node.ip}:${this.config.metagraph.layers.dl1.ports.public}/node/info` : ''}
@@ -139,11 +141,13 @@ export default class OpsgenieAlertService implements IAlertService {
   async createRestartStarted(
     restartType: string,
     restartReason: string,
+    lastMetagraphSnapshotOrdinal?: number,
   ): Promise<void> {
     this.customLog(`Creating remote alert MetagraphRestartStarted`);
     const alertBody = this.buildStartedRestartAlertBody(
       restartType,
       restartReason,
+      lastMetagraphSnapshotOrdinal,
     );
 
     await this.createRemoteAlert(alertBody);

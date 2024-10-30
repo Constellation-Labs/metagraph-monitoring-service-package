@@ -41,7 +41,7 @@ export default class SnapshotsStopped implements IRestartCondition {
 
   async shouldRestart(): Promise<ShouldRestartInfo> {
     this.customLogger(`Checking if snapshots stopped to being produced`);
-    const { lastSnapshotTimestamp } =
+    const { lastSnapshotTimestamp, lastSnapshotOrdinal } =
       await this.metagraphService.metagraphSnapshotInfo;
 
     const lastSnapshotTimestampDiff = utc().diff(
@@ -64,6 +64,7 @@ export default class SnapshotsStopped implements IRestartCondition {
     return {
       shouldRestart: true,
       restartType: 'Full Metagraph',
+      lastMetagraphSnapshotOrdinal: lastSnapshotOrdinal,
     };
   }
 

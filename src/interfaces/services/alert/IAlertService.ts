@@ -11,6 +11,7 @@ export default interface IAlertService {
   createRestartStarted(
     restartType: string,
     restartReason: string,
+    lastMetagraphSnapshotOrdinal?: number,
   ): Promise<void>;
   createRestartFailed(failedReason: string): Promise<void>;
   closeAlert(alertType: AlertType): Promise<void>;
