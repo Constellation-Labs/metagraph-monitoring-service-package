@@ -58,7 +58,7 @@ export default class SnapshotsStopped implements IRestartCondition {
     }
 
     this.customLogger(
-      `Last snapshot produced greater than ${this.MAX_MINUTES_WITHOUT_NEW_SNAPSHOTS} minutes ago. Triggering a restart`,
+      `Last snapshot produced greater than ${this.MAX_MINUTES_WITHOUT_NEW_SNAPSHOTS} minutes ago, last ordinal in block explorer: ${lastSnapshotOrdinal}. Triggering a restart`,
     );
 
     return {

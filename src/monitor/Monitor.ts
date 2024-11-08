@@ -84,6 +84,7 @@ export default class Monitor {
             await this.alertService.createRestartStarted(
               shoulRestartInfo.restartType,
               restartCondition.name,
+              shoulRestartInfo.lastMetagraphSnapshotOrdinal,
             );
 
             this.loggerService.info(
