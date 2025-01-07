@@ -1,3 +1,4 @@
+import IAlertCondition from '@interfaces/alert-conditions/IAlertCondition';
 import IRestartCondition from '@interfaces/restart-conditions/IRestartCondition';
 import IAlertService from '@interfaces/services/alert/IAlertService';
 import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
@@ -12,6 +13,8 @@ import FileLoggerService from '@services/logger/FileLoggerService';
 import ConstellationMetagraphService from '@services/metagraph/ConstellationMetagraphService';
 import NoSeedlistService from '@services/seedlist/NoSeedlistService';
 
+import DiskSpaceLimit from './monitor/alert/conditions/DiskSpaceLimit';
+import OwnerWalletOutOfFunds from './monitor/alert/conditions/OwnerWalletOutOfFunds';
 import SnapshotsStopped from './monitor/restart/conditions/SnapshotsStopped';
 import UnhealthyNodes from './monitor/restart/conditions/UnhealthyNodes';
 import { Ssh2Service } from './services';
@@ -44,6 +47,7 @@ type MetagraphProps = {
   name: string;
   version: string;
   default_restart_conditions: string[];
+  default_alert_conditions?: string[];
   layers: {
     ml0: MetagraphLayerProps;
     cl1: MetagraphLayerProps;
@@ -67,6 +71,8 @@ export type Config = {
   metagraph: MetagraphProps;
   network: NetworkProps;
   check_healthy_interval_in_minutes: number;
+  min_disk_space_percent?: number;
+  min_owner_wallet_balance?: number;
 };
 
 export class MonitoringConfiguration {
@@ -78,6 +84,7 @@ export class MonitoringConfiguration {
   public loggerService: ILoggerService;
   public alertService: IAlertService;
   private restartConditions: IRestartCondition[];
+  private alertConditions: IAlertCondition[];
 
   constructor(
     config: Config,
@@ -91,6 +98,7 @@ export class MonitoringConfiguration {
       alertService?: IAlertService;
     },
     customRestartConditions?: IRestartCondition[],
+    customAlertConditions?: IAlertCondition[],
   ) {
     this.config = config;
 
@@ -117,6 +125,8 @@ export class MonitoringConfiguration {
     this.restartConditions = this.buildRestartConditions(
       customRestartConditions,
     );
+
+    this.alertConditions = this.buildAlertConditions(customAlertConditions);
   }
 
   private buildSshServices(logger: ILoggerService): ISshService[] {
@@ -164,5 +174,40 @@ export class MonitoringConfiguration {
 
   getRestartConditions(): IRestartCondition[] {
     return this.restartConditions;
+  }
+
+  private buildAlertConditions(
+    customAlertConditions?: IAlertCondition[],
+  ): IAlertCondition[] {
+    let alertConditions = [];
+
+    const { default_alert_conditions } = this.config.metagraph;
+    if (
+      default_alert_conditions &&
+      default_alert_conditions.includes('DiskSpaceLimit')
+    ) {
+      alertConditions.push(new DiskSpaceLimit(this));
+    }
+
+    if (
+      default_alert_conditions &&
+      default_alert_conditions.includes('OwnerWalletOutOfFunds')
+    ) {
+      alertConditions.push(new OwnerWalletOutOfFunds(this));
+    }
+
+    if (customAlertConditions) {
+      alertConditions = [...alertConditions, ...customAlertConditions];
+    }
+
+    return alertConditions;
+  }
+
+  setAlertConditions(customAlertConditions?: IAlertCondition[]) {
+    this.alertConditions = this.buildAlertConditions(customAlertConditions);
+  }
+
+  getAlertConditions(): IAlertCondition[] {
+    return this.alertConditions;
   }
 }

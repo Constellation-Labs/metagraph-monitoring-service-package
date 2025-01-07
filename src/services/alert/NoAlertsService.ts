@@ -26,4 +26,8 @@ export default class NoAlertsService implements IAlertService {
   async closeAlert(): Promise<void> {
     this.customLog(`No alerts`);
   }
+
+  async createInformativeAlert(): Promise<void> {
+    this.customLog(`No alerts`);
+  }
 }

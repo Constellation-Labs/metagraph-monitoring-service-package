@@ -31,10 +31,14 @@ To run this service, you must provide the necessary configuration in the file: `
 *   **`metagraph.id`**: The unique identifier for your metagraph.
 *   **`metagraph.name`**: The name of your metagraph.
 *   **`metagraph.version`**: The version of your metagraph.
-*   **`metagraph.default_restart_conditions`**: Specifies the conditions under which your metagraph should restart. These conditions are located in the directory: `src/jobs/restart/conditions`. 
+*   **`metagraph.default_restart_conditions`**: Specifies the conditions under which your metagraph should restart. These conditions are located in the directory: `src/monitor/restart/conditions`. 
     *   By default, there are two conditions:
         *   `SnapshotStopped`: Triggers if your metagraph stops producing snapshots.
         *   `UnhealthyNodes`: Triggers if your metagraph nodes become unhealthy.
+*   **`metagraph.default_alert_conditions`**: Specifies when your metagraph should trigger alerts. These conditions are defined in the directory: `src/monitor/alerts/conditions`. 
+    *   By default, there are two conditions:
+        *   `DiskSpaceLimit`: Alerts when the available disk space drops below the threshold set by `min_disk_space_percent`.
+        *   `OwnerWalletOutOfFunds`: Alerts when the metagraph owner’s wallet balance falls below the value defined by `min_owner_wallet_balance`.
 *   **`metagraph.layers`**: Details about your metagraph layers. Options include:
     *   **`ignore_layer`**: Set to `true` to disable a layer such as `currency-l1` or `data-l1`.
     *   **`ports`**: Lists public, p2p, and cli ports.
@@ -48,6 +52,8 @@ To run this service, you must provide the necessary configuration in the file: `
 *   **`network.name`**: The network your metagraph is part of, such as `integrationnet` or `mainnet`.  
 *   **`network.nodes`**: Information about the GL0s nodes.  
 *   **`check_healthy_interval_in_minutes`**: The interval, in minutes, at which the health check should run.
+*   **`min_disk_space_percent`**: The minimum disk space percentage required for the node to avoid triggering disk space alerts.
+*   **`min_owner_wallet_balance`**: The minimum wallet balance for the metagraph owner to avoid triggering low balance alerts.
 
 ## Interfaces
 
@@ -56,7 +62,11 @@ We offer a suite of interfaces that allow you to customize the restart flow for 
 *  **`IRestartCondition`**: Use this interface to add new restart conditions to your metagraph. We currently implement this interface with two conditions:
     *   **`SnapshotStopped`**: Activates if your metagraph stops producing snapshots.
     *   **`UnhealthyNodes`**: Activates if your metagraph nodes become unhealthy. 
-       
+
+*  **`IAlertCondition`**: Use this interface to add new alert conditions to your metagraph. We currently implement this interface with two conditions:
+    *   `DiskSpaceLimit`: Activates when the available disk space drops below the threshold set by `min_disk_space_percent`.
+    *   `OwnerWalletOutOfFunds`: Activates when the metagraph owner’s wallet balance falls below the value defined by `min_owner_wallet_balance`.
+
 *  **`IAlertService`**: This interface allows the addition of new alert services to your restart mechanism. By default, we offer two options:
     *   **`NoAlertsService`**: Use this if no external alert system is required.
     *   **`OpsgenieAlertService`**: An example service for alerting via Opsgenie.
