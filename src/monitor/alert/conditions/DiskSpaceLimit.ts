@@ -44,6 +44,8 @@ export default class freeDiskSpacePercentLimit implements IAlertCondition {
       );
       return {
         shouldAlert: false,
+        alertName: this.name,
+        alertPriority: this.alertPriority,
       };
     }
     try {
@@ -69,10 +71,10 @@ export default class freeDiskSpacePercentLimit implements IAlertCondition {
       if (instancesWithLowfreeDiskSpacePercent.length === 0) {
         this.customLogger('All instances with enough disk space');
 
-        await this.alertService.closeAlert('Informative', this.name);
-
         return {
           shouldAlert: false,
+          alertName: this.name,
+          alertPriority: this.alertPriority,
         };
       }
 
@@ -91,20 +93,15 @@ export default class freeDiskSpacePercentLimit implements IAlertCondition {
         shouldAlert: true,
         message,
         alertName: this.name,
+        alertPriority: this.alertPriority,
       };
     } catch (e) {
       this.customLogger(`Error when checking node disk space: ${e}`, 'Error');
       return {
         shouldAlert: false,
+        alertName: this.name,
+        alertPriority: this.alertPriority,
       };
     }
-  }
-
-  async triggerAlert(message: string): Promise<void> {
-    await this.alertService.createInformativeAlert(
-      message,
-      this.name,
-      this.alertPriority,
-    );
   }
 }

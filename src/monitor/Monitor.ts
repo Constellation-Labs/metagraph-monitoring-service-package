@@ -114,13 +114,25 @@ export default class Monitor {
         try {
           const shouldAlertInfo = await alertCondition.shouldAlert();
           if (shouldAlertInfo.shouldAlert) {
-            await alertCondition.triggerAlert(shouldAlertInfo.message || '');
-
             this.loggerService.info(
               `Condition ${alertCondition.name} detected, triggering alert...`,
             );
 
+            await this.alertService.createInformativeAlert(
+              shouldAlertInfo.message || '',
+              shouldAlertInfo.alertName,
+              shouldAlertInfo.alertPriority,
+            );
+
             return;
+          } else {
+            this.loggerService.info(
+              `Closing informative alert ${alertCondition.name}`,
+            );
+            await await this.alertService.closeAlert(
+              'Informative',
+              shouldAlertInfo.alertName,
+            );
           }
         } catch (e) {
           this.loggerService.warn(

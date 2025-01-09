@@ -6,7 +6,8 @@ import { Config } from 'src/MonitoringConfiguration';
 export type ShouldAlertInfo = {
   shouldAlert: boolean;
   message?: string;
-  alertName?: string;
+  alertName: string;
+  alertPriority: 'P1' | 'P2' | 'P3' | 'P4' | 'P5';
 };
 
 export default interface IAlertCondition {
@@ -18,5 +19,4 @@ export default interface IAlertCondition {
   alertPriority: 'P1' | 'P2' | 'P3' | 'P4' | 'P5';
 
   shouldAlert(): Promise<ShouldAlertInfo>;
-  triggerAlert(message: string): Promise<void>;
 }

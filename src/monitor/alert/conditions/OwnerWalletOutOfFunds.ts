@@ -52,6 +52,8 @@ export default class OwnerWalletOutOfFunds implements IAlertCondition {
       );
       return {
         shouldAlert: false,
+        alertName: this.name,
+        alertPriority: this.alertPriority,
       };
     }
     try {
@@ -66,10 +68,10 @@ export default class OwnerWalletOutOfFunds implements IAlertCondition {
       if (ownerWalletBalance > minOwnerWalletBalance) {
         this.customLogger('Owner wallet with enough balance');
 
-        await this.alertService.closeAlert('Informative', this.name);
-
         return {
           shouldAlert: false,
+          alertName: this.name,
+          alertPriority: this.alertPriority,
         };
       }
 
@@ -81,6 +83,7 @@ export default class OwnerWalletOutOfFunds implements IAlertCondition {
         shouldAlert: true,
         message,
         alertName: this.name,
+        alertPriority: this.alertPriority,
       };
     } catch (e) {
       this.customLogger(
@@ -89,15 +92,9 @@ export default class OwnerWalletOutOfFunds implements IAlertCondition {
       );
       return {
         shouldAlert: false,
+        alertName: this.name,
+        alertPriority: this.alertPriority,
       };
     }
-  }
-
-  async triggerAlert(message: string): Promise<void> {
-    await this.alertService.createInformativeAlert(
-      message,
-      this.name,
-      this.alertPriority,
-    );
   }
 }
