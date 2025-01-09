@@ -125,6 +125,30 @@ export default class OpsgenieAlertService implements IAlertService {
     };
   };
 
+  private buildInformativeAlertBody = (
+    message: string,
+    alertName: string,
+    alertPriority: 'P1' | 'P2' | 'P3' | 'P4' | 'P5',
+  ): object => {
+    const { name: metagraphName, id } = this.config.metagraph;
+    const { name: networkName } = this.config.network;
+
+    return {
+      message: `Informative Alert - ${metagraphName} ${alertName}`,
+      description: `${message}`,
+      actions: ['Metagraph', 'Informative'],
+      alias: `${id}_informative_${alertName}`,
+      tags: [this.valid_network_tags_opsgenie[networkName as NetworkNames]],
+      details: {
+        metagraphId: id,
+        network: networkName,
+        metagraphName: metagraphName,
+      },
+      entity: 'Metagraph',
+      priority: alertPriority,
+    };
+  };
+
   private async createRemoteAlert(body: object) {
     try {
       await axios.post(this.opsgenie_alert_url, body, {
@@ -162,7 +186,7 @@ export default class OpsgenieAlertService implements IAlertService {
     this.customLog(`Alert created`);
   }
 
-  async closeAlert(alertType: AlertType): Promise<void> {
+  async closeAlert(alertType: AlertType, alertName?: string): Promise<void> {
     this.customLog(`Closing ${alertType} alert`);
     const body = {
       user: 'Monitoring Script',
@@ -173,8 +197,10 @@ export default class OpsgenieAlertService implements IAlertService {
     let alias = '';
     if (alertType === 'RestartStarted') {
       alias = `${this.config.metagraph.id}_restart`;
-    } else {
+    } else if (alertType === 'RestartFailed') {
       alias = `${this.config.metagraph.id}_failure_restarted`;
+    } else {
+      alias = `${this.config.metagraph.id}_informative_${alertName}`;
     }
 
     try {
@@ -206,5 +232,21 @@ export default class OpsgenieAlertService implements IAlertService {
     } catch (e) {
       throw Error(`Failing when closing remote alert: ${e}`);
     }
+  }
+
+  async createInformativeAlert(
+    message: string,
+    alertName: string,
+    alertPriority: 'P1' | 'P2' | 'P3' | 'P4' | 'P5',
+  ): Promise<void> {
+    this.customLog(`Creating remote informative alert: ${alertName}`);
+    const alertBody = this.buildInformativeAlertBody(
+      message,
+      alertName,
+      alertPriority,
+    );
+
+    await this.createRemoteAlert(alertBody);
+    this.customLog(`Alert created`);
   }
 }

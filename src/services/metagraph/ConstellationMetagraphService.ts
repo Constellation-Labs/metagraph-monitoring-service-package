@@ -29,6 +29,7 @@ export default class ConstellationMetagraphService
       lastSnapshotTimestamp: 0,
       lastSnapshotOrdinal: 0,
       lastSnapshotHash: '',
+      ownerAddress: '',
     };
   }
 
@@ -43,6 +44,7 @@ export default class ConstellationMetagraphService
       const lastSnapshotTimestamp: number = response.data.data.timestamp;
       const lastSnapshotOrdinal: number = response.data.data.ordinal;
       const lastSnapshotHash: string = response.data.data.hash;
+      const ownerAddress: string = response.data.data.ownerAddress;
 
       this.customLogger(
         `LAST SNAPSHOT OF METAGRAPH ${this.metagraphId}: ${lastSnapshotTimestamp}. Ordinal: ${lastSnapshotOrdinal}. Hash: ${lastSnapshotHash}`,
@@ -52,6 +54,7 @@ export default class ConstellationMetagraphService
         lastSnapshotTimestamp,
         lastSnapshotOrdinal,
         lastSnapshotHash,
+        ownerAddress,
       };
     } catch (e) {
       throw Error(

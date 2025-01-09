@@ -1,3 +1,4 @@
+import IAlertCondition from '@interfaces/alert-conditions/IAlertCondition';
 import IRestartCondition from '@interfaces/restart-conditions/IRestartCondition';
 import IAlertService from '@interfaces/services/alert/IAlertService';
 import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
@@ -19,6 +20,7 @@ export default class Monitor {
   public loggerService: ILoggerService;
   public alertService: IAlertService;
   public restartConditions: IRestartCondition[];
+  public alertConditions: IAlertCondition[];
 
   public forceRestart: boolean;
 
@@ -36,6 +38,7 @@ export default class Monitor {
     this.alertService = monitoringConfiguration.alertService;
     this.forceRestart = forceRestart;
     this.restartConditions = monitoringConfiguration.getRestartConditions();
+    this.alertConditions = monitoringConfiguration.getAlertConditions();
   }
 
   private async closeRemoteAlerts() {
@@ -56,6 +59,9 @@ export default class Monitor {
 
       this.loggerService.info('Getting last metagraph snapshot info');
       await this.metagraphService.setLastMetagraphInfo();
+      this.loggerService.info(
+        `Last metagraph snapshot info: ${JSON.stringify(this.metagraphService.metagraphSnapshotInfo)}`,
+      );
 
       if (this.forceRestart) {
         this.loggerService.info(
@@ -98,6 +104,27 @@ export default class Monitor {
         } catch (e) {
           this.loggerService.warn(
             `Could not get restart condition: ${restartCondition}, skipping`,
+          );
+          continue;
+        }
+      }
+
+      this.loggerService.info(`Checking conditions to informative alert`);
+      for (const alertCondition of this.alertConditions) {
+        try {
+          const shouldAlertInfo = await alertCondition.shouldAlert();
+          if (shouldAlertInfo.shouldAlert) {
+            await alertCondition.triggerAlert(shouldAlertInfo.message || '');
+
+            this.loggerService.info(
+              `Condition ${alertCondition.name} detected, triggering alert...`,
+            );
+
+            return;
+          }
+        } catch (e) {
+          this.loggerService.warn(
+            `Could not get alert condition: ${alertCondition}, skipping`,
           );
           continue;
         }

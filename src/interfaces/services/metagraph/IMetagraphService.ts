@@ -19,6 +19,7 @@ export type MetagraphSnapshotInfo = {
   lastSnapshotTimestamp: number;
   lastSnapshotOrdinal: number;
   lastSnapshotHash: string;
+  ownerAddress: string;
 };
 
 export type MetagraphNodeInfo = {
