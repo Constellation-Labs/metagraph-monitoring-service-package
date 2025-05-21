@@ -162,7 +162,7 @@ export class FullMetagraph {
       try {
         const command = `
         cd metagraph-l0
-        ls data/incremental_snapshot/${lastSnapshotHash}
+        ls data/incremental_snapshot/hash/${lastSnapshotHash.slice(0, 3)}/${lastSnapshotHash.slice(3, 6)}/${lastSnapshotHash}
         `;
 
         await sshService.executeCommand(command, false);
