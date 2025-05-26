@@ -56,17 +56,31 @@ export default class MonitoringApp {
     this.forceRestart = value;
   }
 
-  public async checkMetagraphHealthOnce() {
+  public async checkMetagraphHealthOnce(): Promise<void> {
     try {
-      await this.initializeSshConnections();
+      try {
+        await this.initializeSshConnections();
+      } catch (e) {
+        const message = `Could not establish connection with node(s). Error: ${JSON.stringify(e)}`;
+        this.configuration.alertService.createRestartFailed(message);
+        this.configuration.loggerService.warn(message);
+        return;
+      }
+
       const monitor = new Monitor(this.configuration, this.forceRestart);
       await monitor.execute();
     } catch (e) {
       this.configuration.loggerService.error(
-        `Error when executing checkMetagraphHealth: ${e}`,
+        `Error while executing checkMetagraphHealth: ${JSON.stringify(e)}`,
       );
     } finally {
-      await this.finishSshConnections();
+      try {
+        await this.finishSshConnections();
+      } catch (e) {
+        this.configuration.loggerService.warn(
+          `Error while closing SSH connections: ${JSON.stringify(e)}`,
+        );
+      }
     }
   }
 
