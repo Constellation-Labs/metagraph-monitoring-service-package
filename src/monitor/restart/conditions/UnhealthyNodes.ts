@@ -88,7 +88,7 @@ export default class UnhealthyNodes implements IRestartCondition {
         (it) => it.metagraphNode.ip,
       );
       const metagraphReferenceNode = metagraphNodes.find(
-        (it) => !(it.ip in unhealthyNodesIps),
+        (it) => !unhealthyNodesIps.includes(it.ip),
       );
       if (!metagraphReferenceNode) {
         throw Error(
