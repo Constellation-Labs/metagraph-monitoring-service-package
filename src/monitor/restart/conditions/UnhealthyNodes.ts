@@ -6,7 +6,7 @@ import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
-import { Layers } from '@shared/constants';
+import { AvailableLayers, Layers } from '@shared/constants';
 import { Config, MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
 import { FullLayer } from '../groups/FullLayer';
@@ -80,75 +80,49 @@ export default class UnhealthyNodes implements IRestartCondition {
       this.layerRestarted = true;
     }
   }
+  private async restartLayerNodes(
+    unhealthyNodes: ISshService[],
+    layer: AvailableLayers,
+  ): Promise<void> {
+    const unhealthyIps = unhealthyNodes.map((n) => n.metagraphNode.ip);
+
+    this.loggerService.info(`[${layer}] Trying to get metagraphReferenceNode`);
+    const referenceNode = this.sshServices
+      .map((s) => s.metagraphNode)
+      .find((n) => !unhealthyIps.includes(n.ip));
+
+    if (!referenceNode) {
+      throw new Error(
+        `[${layer}] No healthy reference node available for layer ${layer}`,
+      );
+    }
+
+    this.loggerService.info(`[${layer}] Starting individual nodes restart`);
+    for (const node of unhealthyNodes) {
+      this.loggerService.info(
+        `[${layer}] Triggering restart of node: ${node.metagraphNode.ip}, with reference node: ${referenceNode.ip}`,
+      );
+      await new IndividualNode(
+        this.monitoringConfiguration,
+        node,
+        referenceNode,
+        this.globalNetworkService.referenceSourceNode,
+        layer,
+      ).performRestart();
+    }
+  }
 
   private async tryRestartIndividualNodes() {
-    const metagraphNodes = this.sshServices.map((it) => it.metagraphNode);
     if (this.metagraphL0UnhealthyNodes.length > 0) {
-      const unhealthyNodesIps = this.metagraphL0UnhealthyNodes.map(
-        (it) => it.metagraphNode.ip,
-      );
-      const metagraphReferenceNode = metagraphNodes.find(
-        (it) => !unhealthyNodesIps.includes(it.ip),
-      );
-      if (!metagraphReferenceNode) {
-        throw Error(
-          'Could not get reference node to restart individual node on layer metagraph-l0',
-        );
-      }
-      for (const metagraphL0 of this.metagraphL0UnhealthyNodes) {
-        await new IndividualNode(
-          this.monitoringConfiguration,
-          metagraphL0,
-          metagraphReferenceNode,
-          this.globalNetworkService.referenceSourceNode,
-          Layers.ML0,
-        ).performRestart();
-      }
+      await this.restartLayerNodes(this.metagraphL0UnhealthyNodes, Layers.ML0);
     }
-    if (this.currencyL1UnhealthyNodes.length > 0) {
-      const unhealthyNodesIps = this.currencyL1UnhealthyNodes.map(
-        (it) => it.metagraphNode.ip,
-      );
-      const metagraphReferenceNode = metagraphNodes.find(
-        (it) => !(it.ip in unhealthyNodesIps),
-      );
-      if (!metagraphReferenceNode) {
-        throw Error(
-          'Could not get reference node to restart individual node on layer currency-l1',
-        );
-      }
-      for (const currencyL1 of this.currencyL1UnhealthyNodes) {
-        await new IndividualNode(
-          this.monitoringConfiguration,
-          currencyL1,
-          metagraphReferenceNode,
-          this.globalNetworkService.referenceSourceNode,
-          Layers.CL1,
-        ).performRestart();
-      }
-    }
-    if (this.dataL1NUnhealthyNodes.length > 0) {
-      const unhealthyNodesIps = this.dataL1NUnhealthyNodes.map(
-        (it) => it.metagraphNode.ip,
-      );
-      const metagraphReferenceNode = metagraphNodes.find((it) => {
-        return !unhealthyNodesIps.includes(it.ip);
-      });
 
-      if (!metagraphReferenceNode) {
-        throw Error(
-          'Could not get reference node to restart individual node on layer data-l1',
-        );
-      }
-      for (const dataL1 of this.dataL1NUnhealthyNodes) {
-        await new IndividualNode(
-          this.monitoringConfiguration,
-          dataL1,
-          metagraphReferenceNode,
-          this.globalNetworkService.referenceSourceNode,
-          Layers.DL1,
-        ).performRestart();
-      }
+    if (this.currencyL1UnhealthyNodes.length > 0) {
+      await this.restartLayerNodes(this.currencyL1UnhealthyNodes, Layers.CL1);
+    }
+
+    if (this.dataL1NUnhealthyNodes.length > 0) {
+      await this.restartLayerNodes(this.dataL1NUnhealthyNodes, Layers.DL1);
     }
   }
 
