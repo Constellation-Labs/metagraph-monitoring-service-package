@@ -1,6 +1,6 @@
 {
   "name": "@constellation-network/metagraph-monitoring-service",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "Constellation metagraph monitoring service",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

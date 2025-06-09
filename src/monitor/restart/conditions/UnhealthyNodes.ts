@@ -192,6 +192,7 @@ export default class UnhealthyNodes implements IRestartCondition {
   }
 
   async triggerRestart(): Promise<void> {
+    this.layerRestarted = false;
     await this.tryRestartFullLayer();
     if (!this.layerRestarted) {
       await this.tryRestartIndividualNodes();
