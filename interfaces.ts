@@ -5,6 +5,7 @@ import {
   ILoggerService,
   IMetagraphService,
   ISeedlistService,
+  IAllowanceListService,
   ISshService,
   ShouldRestartInfo,
 } from './src/interfaces';
@@ -16,6 +17,7 @@ export type {
   IMetagraphService,
   ILoggerService,
   ISeedlistService,
+  IAllowanceListService,
   ISshService,
 };
 

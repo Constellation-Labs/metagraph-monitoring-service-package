@@ -88,7 +88,7 @@ We offer a suite of interfaces that allow you to customize the restart flow for 
 
 ## Customizing Services
 
-You can customize services further by implementing several interfaces such as `IAlertService`, `ILoggerService`, `IGlobalNetworkService`, `IMetagraphService`, `ISeedlistService`, and `ISshService`. All these interfaces are available in the following import statement:
+You can customize services further by implementing several interfaces such as `IAlertService`, `ILoggerService`, `IGlobalNetworkService`, `IMetagraphService`, `ISeedlistService`, `IAllowanceListService`, and `ISshService`. All these interfaces are available in the following import statement:
 
 ```
 import {
@@ -97,6 +97,7 @@ import {
   IGlobalNetworkService,
   IMetagraphService,
   ISeedlistService,
+  IAllowanceListService,
   ISshService,
 } from '@interfaces';
 ``` 
@@ -146,6 +147,7 @@ class MyCustomRestartCondition implements IRestartCondition {
   metagraphService: IMetagraphService;
   globalNetworkService: IGlobalNetworkService;
   seedlistService: ISeedlistService;
+  allowanceListService: IAllowanceListService;
   logger: ILoggerService;
   shouldRestart(): Promise<ShouldRestartInfo>;
   triggerRestart(): Promise<void>;

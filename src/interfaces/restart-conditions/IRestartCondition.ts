@@ -1,3 +1,4 @@
+import IAllowanceListService from '@interfaces/services/allowance-list/IAllowanceListService';
 import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
@@ -17,6 +18,7 @@ export default interface IRestartCondition {
   metagraphService: IMetagraphService;
   globalNetworkService: IGlobalNetworkService;
   seedlistService: ISeedlistService;
+  allowanceListService: IAllowanceListService;
   loggerService: ILoggerService;
 
   shouldRestart(): Promise<ShouldRestartInfo>;

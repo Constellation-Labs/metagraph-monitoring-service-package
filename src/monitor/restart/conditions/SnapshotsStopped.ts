@@ -3,6 +3,7 @@ import { utc } from 'moment';
 import IRestartCondition, {
   ShouldRestartInfo,
 } from '@interfaces/restart-conditions/IRestartCondition';
+import IAllowanceListService from '@interfaces/services/allowance-list/IAllowanceListService';
 import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
@@ -21,6 +22,7 @@ export default class SnapshotsStopped implements IRestartCondition {
   metagraphService: IMetagraphService;
   globalNetworkService: IGlobalNetworkService;
   seedlistService: ISeedlistService;
+  allowanceListService: IAllowanceListService;
   loggerService: ILoggerService;
 
   private MAX_MINUTES_WITHOUT_NEW_SNAPSHOTS = 4;
@@ -32,6 +34,7 @@ export default class SnapshotsStopped implements IRestartCondition {
     this.sshServices = monitoringConfiguration.sshServices;
     this.globalNetworkService = monitoringConfiguration.globalNetworkService;
     this.seedlistService = monitoringConfiguration.seedlistService;
+    this.allowanceListService = monitoringConfiguration.allowanceListService;
     this.loggerService = monitoringConfiguration.loggerService;
   }
 

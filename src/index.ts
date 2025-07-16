@@ -1,5 +1,6 @@
 import IRestartCondition from '@interfaces/restart-conditions/IRestartCondition';
 import IAlertService from '@interfaces/services/alert/IAlertService';
+import IAllowanceListService from '@interfaces/services/allowance-list/IAllowanceListService';
 import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
@@ -23,6 +24,7 @@ export default class MonitoringApp {
       metagraphService?: IMetagraphService;
       globalNetworkService?: IGlobalNetworkService;
       seedlistService?: ISeedlistService;
+      allowanceListService?: IAllowanceListService;
       alertService?: IAlertService;
     },
     customRestartConditions?: IRestartCondition[],

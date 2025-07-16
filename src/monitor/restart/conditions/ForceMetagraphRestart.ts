@@ -1,6 +1,7 @@
 import IRestartCondition, {
   ShouldRestartInfo,
 } from '@interfaces/restart-conditions/IRestartCondition';
+import IAllowanceListService from '@interfaces/services/allowance-list/IAllowanceListService';
 import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
@@ -19,6 +20,7 @@ export default class ForceMetagraphRestart implements IRestartCondition {
   metagraphService: IMetagraphService;
   globalNetworkService: IGlobalNetworkService;
   seedlistService: ISeedlistService;
+  allowanceListService: IAllowanceListService;
   loggerService: ILoggerService;
 
   constructor(monitoringConfiguration: MonitoringConfiguration) {
@@ -28,6 +30,7 @@ export default class ForceMetagraphRestart implements IRestartCondition {
     this.metagraphService = monitoringConfiguration.metagraphService;
     this.globalNetworkService = monitoringConfiguration.globalNetworkService;
     this.seedlistService = monitoringConfiguration.seedlistService;
+    this.allowanceListService = monitoringConfiguration.allowanceListService;
     this.loggerService = monitoringConfiguration.loggerService;
   }
 
