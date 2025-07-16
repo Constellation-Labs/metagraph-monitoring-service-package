@@ -153,7 +153,7 @@ export class MetagraphL0 {
     await this.updateAllowanceList(allowanceListUrl, allowanceListFileName);
 
     const args = [
-      `nohup java -jar data-l1.jar run-rollback`,
+      `nohup java -jar metagraph-l0.jar run-rollback`,
       `--ip ${this.currentNode.ip}`,
       url ? `--seedlist ${fileName}` : '',
       allowanceListUrl ? `--allowanceList ${allowanceListFileName}` : '',
@@ -184,7 +184,7 @@ export class MetagraphL0 {
     await this.updateAllowanceList(allowanceListUrl, allowanceListFileName);
 
     const args = [
-      `nohup java -jar data-l1.jar run-validator`,
+      `nohup java -jar metagraph-l0.jar run-validator`,
       `--ip ${this.currentNode.ip}`,
       url ? `--seedlist ${fileName}` : '',
       allowanceListUrl ? `--allowanceList ${allowanceListFileName}` : '',
