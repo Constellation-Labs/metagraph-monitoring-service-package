@@ -1,3 +1,4 @@
+import IAllowanceListService from '@interfaces/services/allowance-list/IAllowanceListService';
 import { NetworkNode } from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService, {
@@ -17,6 +18,7 @@ export class MetagraphL0 {
   sshService: ISshService;
   metagraphService: IMetagraphService;
   seedlistService: ISeedlistService;
+  allowanceListService: IAllowanceListService;
   loggerService: ILoggerService;
 
   currentNode: MetagraphNode;
@@ -32,6 +34,7 @@ export class MetagraphL0 {
     this.sshService = sshService;
     this.metagraphService = monitoringConfiguration.metagraphService;
     this.seedlistService = monitoringConfiguration.seedlistService;
+    this.allowanceListService = monitoringConfiguration.allowanceListService;
     this.loggerService = monitoringConfiguration.loggerService;
 
     this.currentNode = sshService.metagraphNode;
@@ -117,23 +120,49 @@ export class MetagraphL0 {
     await this.sshService.executeCommand(command);
   }
 
+  private async updateAllowanceList(
+    allowanceListUrl?: string,
+    allowanceListFileName?: string,
+  ) {
+    if (!allowanceListUrl) {
+      this.customLogger('Node does not have allowance list set');
+      return;
+    }
+
+    this.customLogger(`Updating allowance list on node`);
+    const command = `
+    cd currency-l1
+    wget -O ${allowanceListFileName} ${allowanceListUrl}
+    `;
+
+    await this.sshService.executeCommand(command);
+  }
+
   async startRollbackNodeL0() {
     this.customLogger(`Starting node ${this.currentNode.ip} as rollback`);
 
     const { url, fileName } =
       await this.seedlistService.buildSeedlistInformation(Layers.ML0);
 
+    const { url: allowanceListUrl, fileName: allowanceListFileName } =
+      await this.allowanceListService.buildAllowanceListformation(Layers.ML0);
+
     const command = this.buildNodeEnvVariables();
 
     await this.updateSeedlist(url, fileName);
+    await this.updateAllowanceList(allowanceListUrl, allowanceListFileName);
 
-    const parsedCommand = ` ${command} 
-    ${
-      url
-        ? `nohup java -jar metagraph-l0.jar run-rollback --ip ${this.currentNode.ip} --seedlist ${fileName} > metagraph-l0-startup.log 2>&1 &`
-        : `nohup java -jar metagraph-l0.jar run-rollback --ip ${this.currentNode.ip} > metagraph-l0-startup.log 2>&1 &`
-    }
-    `;
+    const args = [
+      `nohup java -jar data-l1.jar run-rollback`,
+      `--ip ${this.currentNode.ip}`,
+      url ? `--seedlist ${fileName}` : '',
+      allowanceListUrl ? `--allowanceList ${allowanceListFileName}` : '',
+      `> metagraph-l0-startup.log 2>&1 &`,
+    ]
+      .filter(Boolean)
+      .join(' ');
+
+    const parsedCommand = `${command} ${args}`;
 
     await this.sshService.executeCommand(parsedCommand);
 
@@ -146,17 +175,25 @@ export class MetagraphL0 {
     const { url, fileName } =
       await this.seedlistService.buildSeedlistInformation(Layers.ML0);
 
+    const { url: allowanceListUrl, fileName: allowanceListFileName } =
+      await this.allowanceListService.buildAllowanceListformation(Layers.ML0);
+
     const command = this.buildNodeEnvVariables();
 
     await this.updateSeedlist(url, fileName);
+    await this.updateAllowanceList(allowanceListUrl, allowanceListFileName);
 
-    const parsedCommand = ` ${command} 
-    ${
-      url
-        ? `nohup java -jar metagraph-l0.jar run-validator --ip ${this.currentNode.ip} --seedlist ${fileName} > metagraph-l0-startup.log 2>&1 &`
-        : `nohup java -jar metagraph-l0.jar run-validator --ip ${this.currentNode.ip} > metagraph-l0-startup.log 2>&1 &`
-    }
-    `;
+    const args = [
+      `nohup java -jar data-l1.jar run-validator`,
+      `--ip ${this.currentNode.ip}`,
+      url ? `--seedlist ${fileName}` : '',
+      allowanceListUrl ? `--allowanceList ${allowanceListFileName}` : '',
+      `> metagraph-l0-startup.log 2>&1 &`,
+    ]
+      .filter(Boolean)
+      .join(' ');
+
+    const parsedCommand = `${command} ${args}`;
 
     await this.sshService.executeCommand(parsedCommand);
 

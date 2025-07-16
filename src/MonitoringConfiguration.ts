@@ -1,12 +1,14 @@
 import IAlertCondition from '@interfaces/alert-conditions/IAlertCondition';
 import IRestartCondition from '@interfaces/restart-conditions/IRestartCondition';
 import IAlertService from '@interfaces/services/alert/IAlertService';
+import IAllowanceListService from '@interfaces/services/allowance-list/IAllowanceListService';
 import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 import NoAlertsService from '@services/alert/NoAlertsService';
+import NoAllowanceListService from '@services/allowance-list/NoAllowanceListService';
 import ConstellationGlobalNetworkService from '@services/global-network/ConstellationGlobalNetworkService';
 import ConsoleLoggerService from '@services/logger/ConsoleLoggerService';
 import FileLoggerService from '@services/logger/FileLoggerService';
@@ -40,6 +42,7 @@ type MetagraphLayerProps = {
   };
   additional_env_variables: string[];
   seedlist: unknown;
+  allowance_list: unknown;
 };
 
 type MetagraphProps = {
@@ -81,6 +84,7 @@ export class MonitoringConfiguration {
   public metagraphService: IMetagraphService;
   public globalNetworkService: IGlobalNetworkService;
   public seedlistService: ISeedlistService;
+  public allowanceListService: IAllowanceListService;
   public loggerService: ILoggerService;
   public alertService: IAlertService;
   private restartConditions: IRestartCondition[];
@@ -95,6 +99,7 @@ export class MonitoringConfiguration {
       metagraphService?: IMetagraphService;
       globalNetworkService?: IGlobalNetworkService;
       seedlistService?: ISeedlistService;
+      allowanceListService?: IAllowanceListService;
       alertService?: IAlertService;
     },
     customRestartConditions?: IRestartCondition[],
@@ -119,6 +124,9 @@ export class MonitoringConfiguration {
 
     this.seedlistService =
       services?.seedlistService ?? new NoSeedlistService(this);
+
+    this.allowanceListService =
+      services?.allowanceListService ?? new NoAllowanceListService(this);
 
     this.alertService = services?.alertService ?? new NoAlertsService(this);
 

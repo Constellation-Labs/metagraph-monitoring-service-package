@@ -6,4 +6,7 @@ export { default as FileLoggerService } from './logger/FileLoggerService';
 export { default as ConstellationMetagraphService } from './metagraph/ConstellationMetagraphService';
 export { default as GithubSeedlistService } from './seedlist/GithubSeedlistService';
 export { default as NoSeedlistService } from './seedlist/NoSeedlistService';
+export { default as S3SeedlistService } from './seedlist/S3SeedlistService';
+export { default as NoAllowanceListService } from './allowance-list/NoAllowanceListService';
+export { default as S3AllowanceListService } from './allowance-list/S3AllowanceListService';
 export { default as Ssh2Service } from './ssh/Ssh2Service';

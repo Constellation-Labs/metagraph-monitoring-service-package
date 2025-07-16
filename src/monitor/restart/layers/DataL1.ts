@@ -1,3 +1,4 @@
+import IAllowanceListService from '@interfaces/services/allowance-list/IAllowanceListService';
 import { NetworkNode } from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService, {
@@ -17,6 +18,7 @@ export class DataL1 {
   sshService: ISshService;
   metagraphService: IMetagraphService;
   seedlistService: ISeedlistService;
+  allowanceListService: IAllowanceListService;
   loggerService: ILoggerService;
 
   currentNode: MetagraphNode;
@@ -34,6 +36,7 @@ export class DataL1 {
     this.sshService = sshService;
     this.metagraphService = monitoringConfiguration.metagraphService;
     this.seedlistService = monitoringConfiguration.seedlistService;
+    this.allowanceListService = monitoringConfiguration.allowanceListService;
     this.loggerService = monitoringConfiguration.loggerService;
 
     this.currentNode = sshService.metagraphNode;
@@ -138,6 +141,24 @@ export class DataL1 {
     await this.sshService.executeCommand(command);
   }
 
+  private async updateAllowanceList(
+    allowanceListUrl?: string,
+    allowanceListFileName?: string,
+  ) {
+    if (!allowanceListUrl) {
+      this.customLogger('Node does not have allowance list set');
+      return;
+    }
+
+    this.customLogger(`Updating allowance list on node`);
+    const command = `
+    cd currency-l1
+    wget -O ${allowanceListFileName} ${allowanceListUrl}
+    `;
+
+    await this.sshService.executeCommand(command);
+  }
+
   async startInitialValidatorDl1() {
     this.customLogger(
       `Starting node ${this.currentNode.ip} as initial validator`,
@@ -146,17 +167,25 @@ export class DataL1 {
     const { url, fileName } =
       await this.seedlistService.buildSeedlistInformation(Layers.DL1);
 
+    const { url: allowanceListUrl, fileName: allowanceListFileName } =
+      await this.allowanceListService.buildAllowanceListformation(Layers.DL1);
+
     const command = await this.buildNodeEnvVariables();
 
     await this.updateSeedlist(url, fileName);
+    await this.updateAllowanceList(allowanceListUrl, allowanceListFileName);
 
-    const parsedCommand = ` ${command} 
-    ${
-      url
-        ? `nohup java -jar data-l1.jar run-initial-validator --ip ${this.currentNode.ip} --seedlist ${fileName} > data-l1-startup.log 2>&1 &`
-        : `nohup java -jar data-l1.jar run-initial-validator --ip ${this.currentNode.ip} > data-l1-startup.log 2>&1 &`
-    }
-    `;
+    const args = [
+      `nohup java -jar data-l1.jar run-initial-validator`,
+      `--ip ${this.currentNode.ip}`,
+      url ? `--seedlist ${fileName}` : '',
+      allowanceListUrl ? `--allowanceList ${allowanceListFileName}` : '',
+      `> data-l1-startup.log 2>&1 &`,
+    ]
+      .filter(Boolean)
+      .join(' ');
+
+    const parsedCommand = `${command} ${args}`;
 
     await this.sshService.executeCommand(parsedCommand);
     this.customLogger(
@@ -170,17 +199,25 @@ export class DataL1 {
     const { url, fileName } =
       await this.seedlistService.buildSeedlistInformation(Layers.DL1);
 
+    const { url: allowanceListUrl, fileName: allowanceListFileName } =
+      await this.allowanceListService.buildAllowanceListformation(Layers.DL1);
+
     const command = await this.buildNodeEnvVariables();
 
     await this.updateSeedlist(url, fileName);
+    await this.updateAllowanceList(allowanceListUrl, allowanceListFileName);
 
-    const parsedCommand = ` ${command}
-    ${
-      url
-        ? `nohup java -jar data-l1.jar run-validator --ip ${this.currentNode.ip} --seedlist ${fileName} > data-l1-startup.log 2>&1 &`
-        : `nohup java -jar data-l1.jar run-validator --ip ${this.currentNode.ip} > data-l1-startup.log 2>&1 &`
-    }
-    `;
+    const args = [
+      `nohup java -jar data-l1.jar run-validator`,
+      `--ip ${this.currentNode.ip}`,
+      url ? `--seedlist ${fileName}` : '',
+      allowanceListUrl ? `--allowanceList ${allowanceListFileName}` : '',
+      `> data-l1-startup.log 2>&1 &`,
+    ]
+      .filter(Boolean)
+      .join(' ');
+
+    const parsedCommand = `${command} ${args}`;
 
     await this.sshService.executeCommand(parsedCommand);
 
