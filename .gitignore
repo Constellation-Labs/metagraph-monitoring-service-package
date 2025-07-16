@@ -3,5 +3,4 @@ logs/
 config/*.pem
 output.log
 pidfile.txt
-dist/
 .DS_Store
