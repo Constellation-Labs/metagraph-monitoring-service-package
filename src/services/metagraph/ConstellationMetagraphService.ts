@@ -18,6 +18,7 @@ export default class ConstellationMetagraphService
   networkName: string;
   loggerService: ILoggerService;
   metagraphSnapshotInfo: MetagraphSnapshotInfo;
+  beUrl: string;
 
   constructor(monitoringConfiguration: MonitoringConfiguration) {
     this.config = monitoringConfiguration.config;
@@ -25,6 +26,7 @@ export default class ConstellationMetagraphService
     this.nodes = this.config.metagraph.nodes;
     this.networkName = this.config.network.name;
     this.loggerService = monitoringConfiguration.loggerService;
+    this.beUrl = `https://be-${this.networkName}.constellationnetwork.io/currency/${this.metagraphId}/snapshots/latest`;
     this.metagraphSnapshotInfo = {
       lastSnapshotTimestamp: 0,
       lastSnapshotOrdinal: 0,
@@ -38,9 +40,8 @@ export default class ConstellationMetagraphService
   }
 
   async setLastMetagraphInfo(): Promise<void> {
-    const beUrl = `https://be-${this.networkName}.constellationnetwork.io/currency/${this.metagraphId}/snapshots/latest`;
     try {
-      const response = await axios.get(beUrl);
+      const response = await axios.get(this.beUrl);
       const lastSnapshotTimestamp: number = response.data.data.timestamp;
       const lastSnapshotOrdinal: number = response.data.data.ordinal;
       const lastSnapshotHash: string = response.data.data.hash;
@@ -58,7 +59,7 @@ export default class ConstellationMetagraphService
       };
     } catch (e) {
       throw Error(
-        `Error when searching for metagraph on: ${beUrl}. Error: ${e}`,
+        `Error when searching for metagraph on: ${this.beUrl}. Error: ${e}`,
       );
     }
   }
@@ -78,6 +79,31 @@ export default class ConstellationMetagraphService
     }
   }
 
+  async getLatestGlobalSnapshotOfMetagraph(): Promise<MetagraphSnapshotInfo> {
+    try {
+      const response = await axios.get(this.beUrl);
+      const lastSnapshotOrdinal: number = response.data.data.ordinal;
+      const lastSnapshotHash: string = response.data.data.hash;
+      const lastSnapshotTimestamp: number = response.data.data.timestamp;
+      const ownerAddress: string = response.data.data.ownerAddress;
+
+      this.customLogger(
+        `LAST SNAPSHOT OF METAGRAPH: ${this.metagraphId}. Ordinal: ${lastSnapshotOrdinal}. Hash: ${lastSnapshotHash}. Timestamp: ${lastSnapshotTimestamp}`,
+      );
+
+      return {
+        lastSnapshotOrdinal,
+        lastSnapshotHash,
+        lastSnapshotTimestamp,
+        ownerAddress,
+      };
+    } catch (e) {
+      throw Error(
+        `Error when searching for snapshot on: ${this.beUrl}. Error: ${e}`,
+      );
+    }
+  }
+
   async checkIfNodeIsHealthy(nodeIp: string, nodePort: number) {
     const nodeInfo = await this.getNodeInfo(nodeIp, nodePort);
     if (!nodeInfo) {
@@ -91,5 +117,67 @@ export default class ConstellationMetagraphService
 
     this.customLogger(`Node ${nodeIp}:${nodePort} is HEALTHY`);
     return true;
+  }
+
+  private isNodeInValidRestartingInProgressState(nodeState: string): boolean {
+    return [
+      NodeStatuses.DOWNLOAD_IN_PROGRESS,
+      NodeStatuses.OBSERVING,
+      NodeStatuses.WAITING_FOR_READY,
+    ].includes(nodeState);
+  }
+
+  async checkIfSnapshotExistsOnNode(
+    nodeIp: string,
+    nodePort: number,
+    snapshotHash: string,
+  ): Promise<boolean> {
+    const nodeInfo = await this.getNodeInfo(nodeIp, nodePort);
+    if (!nodeInfo) {
+      this.customLogger(`Unhealthy node: ${nodeIp}`);
+      return false;
+    }
+
+    if (this.isNodeInValidRestartingInProgressState(nodeInfo.state)) {
+      this.customLogger(
+        `Node ${nodeIp}:${nodePort} is in on state: ${nodeInfo.state}. So, it will be considered healthy`,
+      );
+      return true;
+    }
+
+    const nodeUrl = `http://${nodeIp}:${nodePort}/snapshots/${snapshotHash}`;
+    try {
+      await axios.get(nodeUrl);
+      this.customLogger(`Snapshot exists on node: ${nodeIp}`);
+      return true;
+    } catch (e) {
+      this.customLogger(`Snapshot does not exists on node: ${nodeIp}`);
+      return false;
+    }
+  }
+
+  async getL0ForkedNodes(nodes: MetagraphNode[]): Promise<MetagraphNode[]> {
+    const latestSnapshot = await this.getLatestGlobalSnapshotOfMetagraph();
+    const forkedNodes: MetagraphNode[] = [];
+    for (const node of nodes) {
+      this.customLogger(
+        `Checking if the hash ${latestSnapshot.lastSnapshotHash} exists in node ${node.ip}`,
+      );
+
+      const snapshotExistsInNode = await this.checkIfSnapshotExistsOnNode(
+        node.ip,
+        this.config.metagraph.layers.ml0.ports.public,
+        latestSnapshot.lastSnapshotHash,
+      );
+
+      if (!snapshotExistsInNode) {
+        this.customLogger(
+          `Snapshot ${latestSnapshot.lastSnapshotHash} does not exists in node ${node.ip}`,
+        );
+        forkedNodes.push(node);
+      }
+    }
+
+    return forkedNodes;
   }
 }

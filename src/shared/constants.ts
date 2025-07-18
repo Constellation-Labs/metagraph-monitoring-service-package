@@ -7,5 +7,8 @@ export const Layers: Record<string, AvailableLayers> = {
 };
 export const NodeStatuses: Record<string, string> = {
   READY_TO_JOIN: 'ReadyToJoin',
+  DOWNLOAD_IN_PROGRESS: 'DownloadInProgress',
+  OBSERVING: 'Observing',
+  WAITING_FOR_READY: 'WaitingForReady',
   READY: 'Ready',
 };

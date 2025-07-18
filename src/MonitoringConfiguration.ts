@@ -17,6 +17,7 @@ import NoSeedlistService from '@services/seedlist/NoSeedlistService';
 
 import DiskSpaceLimit from './monitor/alert/conditions/DiskSpaceLimit';
 import OwnerWalletOutOfFunds from './monitor/alert/conditions/OwnerWalletOutOfFunds';
+import L0ForkedNodes from './monitor/restart/conditions/L0ForkedNodes';
 import SnapshotsStopped from './monitor/restart/conditions/SnapshotsStopped';
 import UnhealthyNodes from './monitor/restart/conditions/UnhealthyNodes';
 import { Ssh2Service } from './services';
@@ -165,6 +166,10 @@ export class MonitoringConfiguration {
 
     if (default_restart_conditions.includes('UnhealthyNodes')) {
       restartConditions.push(new UnhealthyNodes(this));
+    }
+
+    if (default_restart_conditions.includes('L0ForkedNodes')) {
+      restartConditions.push(new L0ForkedNodes(this));
     }
 
     if (customRestartConditions) {

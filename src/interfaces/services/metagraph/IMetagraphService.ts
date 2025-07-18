@@ -44,4 +44,6 @@ export default interface IMetagraphService {
     nodePort: number,
   ): Promise<MetagraphNodeInfo | null>;
   checkIfNodeIsHealthy(nodeIp: string, nodePort: number): Promise<boolean>;
+
+  getL0ForkedNodes(nodes: MetagraphNode[]): Promise<MetagraphNode[]>;
 }
