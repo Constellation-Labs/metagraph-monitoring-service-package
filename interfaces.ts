@@ -8,6 +8,7 @@ import {
   IAllowanceListService,
   ISshService,
   ShouldRestartInfo,
+  INotificationService,
 } from './src/interfaces';
 
 export type {
@@ -19,6 +20,7 @@ export type {
   ISeedlistService,
   IAllowanceListService,
   ISshService,
+  INotificationService,
 };
 
 export { ShouldRestartInfo };

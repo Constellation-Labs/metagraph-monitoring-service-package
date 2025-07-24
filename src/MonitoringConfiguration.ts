@@ -5,6 +5,7 @@ import IAllowanceListService from '@interfaces/services/allowance-list/IAllowanc
 import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
+import INotificationService from '@interfaces/services/notification/INotificationService';
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 import NoAlertsService from '@services/alert/NoAlertsService';
@@ -13,6 +14,7 @@ import ConstellationGlobalNetworkService from '@services/global-network/Constell
 import ConsoleLoggerService from '@services/logger/ConsoleLoggerService';
 import FileLoggerService from '@services/logger/FileLoggerService';
 import ConstellationMetagraphService from '@services/metagraph/ConstellationMetagraphService';
+import NoNotificationService from '@services/notification/NoNotificationService';
 import NoSeedlistService from '@services/seedlist/NoSeedlistService';
 
 import DiskSpaceLimit from './monitor/alert/conditions/DiskSpaceLimit';
@@ -88,6 +90,7 @@ export class MonitoringConfiguration {
   public allowanceListService: IAllowanceListService;
   public loggerService: ILoggerService;
   public alertService: IAlertService;
+  public notificationService: INotificationService;
   private restartConditions: IRestartCondition[];
   private alertConditions: IAlertCondition[];
 
@@ -102,6 +105,7 @@ export class MonitoringConfiguration {
       seedlistService?: ISeedlistService;
       allowanceListService?: IAllowanceListService;
       alertService?: IAlertService;
+      notificationService?: INotificationService;
     },
     customRestartConditions?: IRestartCondition[],
     customAlertConditions?: IAlertCondition[],
@@ -130,6 +134,9 @@ export class MonitoringConfiguration {
       services?.allowanceListService ?? new NoAllowanceListService(this);
 
     this.alertService = services?.alertService ?? new NoAlertsService(this);
+
+    this.notificationService =
+      services?.notificationService ?? new NoNotificationService(this);
 
     this.restartConditions = this.buildRestartConditions(
       customRestartConditions,

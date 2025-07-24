@@ -70,6 +70,10 @@ We offer a suite of interfaces that allow you to customize the restart flow for 
 *  **`IAlertService`**: This interface allows the addition of new alert services to your restart mechanism. By default, we offer two options:
     *   **`NoAlertsService`**: Use this if no external alert system is required.
     *   **`OpsgenieAlertService`**: An example service for alerting via Opsgenie.
+
+*  **`INotificationService`**: This interface allows the addition of new notification services to your monitoring. By default, we offer two options:
+    *   **`NoNotificationService`**: Use this if no external notification system is required.
+    *   **`DiscordNotificationService`**: An example service for notify via Discord.
      
 *  **`IGlobalNetworkService`**: Interface for requesting data from the global network. The default implementation is `ConstellationGlobalNetworkService`.
     
@@ -88,7 +92,7 @@ We offer a suite of interfaces that allow you to customize the restart flow for 
 
 ## Customizing Services
 
-You can customize services further by implementing several interfaces such as `IAlertService`, `ILoggerService`, `IGlobalNetworkService`, `IMetagraphService`, `ISeedlistService`, `IAllowanceListService`, and `ISshService`. All these interfaces are available in the following import statement:
+You can customize services further by implementing several interfaces such as `IAlertService`, `ILoggerService`, `IGlobalNetworkService`, `IMetagraphService`, `ISeedlistService`, `IAllowanceListService`, `INotificationService`, and `ISshService`. All these interfaces are available in the following import statement:
 
 ```
 import {
@@ -99,6 +103,7 @@ import {
   ISeedlistService,
   IAllowanceListService,
   ISshService,
+  INotificationService
 } from '@interfaces';
 ``` 
 

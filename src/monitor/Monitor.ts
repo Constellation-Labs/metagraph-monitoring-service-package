@@ -5,6 +5,7 @@ import IAllowanceListService from '@interfaces/services/allowance-list/IAllowanc
 import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
+import INotificationService from '@interfaces/services/notification/INotificationService';
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 import { MonitoringConfiguration, Config } from 'src/MonitoringConfiguration';
@@ -21,6 +22,7 @@ export default class Monitor {
   public allowanceListService: IAllowanceListService;
   public loggerService: ILoggerService;
   public alertService: IAlertService;
+  public notificationService: INotificationService;
   public restartConditions: IRestartCondition[];
   public alertConditions: IAlertCondition[];
 
@@ -39,6 +41,7 @@ export default class Monitor {
     this.allowanceListService = monitoringConfiguration.allowanceListService;
     this.loggerService = monitoringConfiguration.loggerService;
     this.alertService = monitoringConfiguration.alertService;
+    this.notificationService = monitoringConfiguration.notificationService;
     this.forceRestart = forceRestart;
     this.restartConditions = monitoringConfiguration.getRestartConditions();
     this.alertConditions = monitoringConfiguration.getAlertConditions();
@@ -155,6 +158,17 @@ export default class Monitor {
         );
         await this.alertService.createRestartFailed(error.message);
       }
+    }
+  }
+
+  async executeWithNotification(notificationMessage: string) {
+    await this.execute();
+    try {
+      this.loggerService.info('Notifying users');
+      this.notificationService.notifyUsers(notificationMessage);
+    } catch (e) {
+      this.loggerService.error(`Error when notifying users`);
+      throw e;
     }
   }
 }

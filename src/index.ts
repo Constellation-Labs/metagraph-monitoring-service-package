@@ -4,6 +4,7 @@ import IAllowanceListService from '@interfaces/services/allowance-list/IAllowanc
 import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
+import INotificationService from '@interfaces/services/notification/INotificationService';
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 
@@ -13,6 +14,7 @@ import { MonitoringConfiguration, Config } from './MonitoringConfiguration';
 export default class MonitoringApp {
   public configuration: MonitoringConfiguration;
   public forceRestart: boolean;
+  public notificationMessage?: string;
 
   constructor(
     config: Config,
@@ -26,8 +28,10 @@ export default class MonitoringApp {
       seedlistService?: ISeedlistService;
       allowanceListService?: IAllowanceListService;
       alertService?: IAlertService;
+      notificationService?: INotificationService;
     },
     customRestartConditions?: IRestartCondition[],
+    notificationMessage?: string,
   ) {
     this.configuration = new MonitoringConfiguration(
       config,
@@ -36,6 +40,7 @@ export default class MonitoringApp {
       customRestartConditions,
     );
     this.forceRestart = forceRestart;
+    this.notificationMessage = notificationMessage;
   }
 
   private async initializeSshConnections() {
@@ -54,10 +59,6 @@ export default class MonitoringApp {
     );
   }
 
-  public setForceRestart(value: boolean) {
-    this.forceRestart = value;
-  }
-
   public async checkMetagraphHealthOnce(): Promise<void> {
     try {
       try {
@@ -70,7 +71,11 @@ export default class MonitoringApp {
       }
 
       const monitor = new Monitor(this.configuration, this.forceRestart);
-      await monitor.execute();
+      if (this.notificationMessage?.trim()) {
+        await monitor.executeWithNotification(this.notificationMessage || '');
+      } else {
+        await monitor.execute();
+      }
     } catch (e) {
       this.configuration.loggerService.error(
         `Error while executing checkMetagraphHealth: ${JSON.stringify(e)}`,
@@ -92,6 +97,7 @@ export default class MonitoringApp {
       try {
         await this.checkMetagraphHealthOnce();
         this.forceRestart = false;
+        this.notificationMessage = undefined;
       } catch (error) {
         this.configuration.loggerService.error(
           `Error when checkMetagraphHealth: ${error}`,

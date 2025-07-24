@@ -10,3 +10,5 @@ export { default as S3SeedlistService } from './seedlist/S3SeedlistService';
 export { default as NoAllowanceListService } from './allowance-list/NoAllowanceListService';
 export { default as S3AllowanceListService } from './allowance-list/S3AllowanceListService';
 export { default as Ssh2Service } from './ssh/Ssh2Service';
+export { default as NoNotificationService } from './notification/NoNotificationService';
+export { default as DiscordNotificationService } from './notification/DiscordNotificationService';

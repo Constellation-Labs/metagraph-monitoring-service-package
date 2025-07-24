@@ -11,4 +11,5 @@ export {
   OpsgenieAlertService,
   NoAllowanceListService,
   S3AllowanceListService,
+  DiscordNotificationService,
 } from './src/services';
