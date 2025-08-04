@@ -12,5 +12,6 @@ export {
   NoAllowanceListService,
   S3AllowanceListService,
   DiscordNotificationService,
-  AWSInstanceReboot,
+  AWSInstanceRebootService,
+  NoRebootService,
 } from './src/services';

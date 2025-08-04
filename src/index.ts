@@ -2,7 +2,7 @@ import IRestartCondition from '@interfaces/restart-conditions/IRestartCondition'
 import IAlertService from '@interfaces/services/alert/IAlertService';
 import IAllowanceListService from '@interfaces/services/allowance-list/IAllowanceListService';
 import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
-import IInstanceReboot from '@interfaces/services/instance-reboot/IInstanceReboot';
+import IInstanceRebootService from '@interfaces/services/instance-reboot/IInstanceRebootService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
 import INotificationService from '@interfaces/services/notification/INotificationService';
@@ -30,7 +30,7 @@ export default class MonitoringApp {
       allowanceListService?: IAllowanceListService;
       alertService?: IAlertService;
       notificationService?: INotificationService;
-      customInstancesReboot?: IInstanceReboot;
+      instanceRebootService?: IInstanceRebootService;
     },
     customRestartConditions?: IRestartCondition[],
     notificationMessage?: string,
@@ -60,7 +60,7 @@ export default class MonitoringApp {
           );
           continue;
         } else {
-          await monitor.instanceReboot?.rebootInstance(instanceId);
+          await monitor.instanceReboot.rebootInstance(instanceId);
           await monitor.alertService.unhealthyCloudInstanceAlert(
             instanceId,
             'P1',

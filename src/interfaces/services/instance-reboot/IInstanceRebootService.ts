@@ -6,7 +6,8 @@ export type ShouldRebootInfo = {
   shouldRestart: boolean;
   restartType?: string;
 };
-export default interface IInstanceReboot {
+
+export default interface IInstanceRebootService {
   name: string;
   config: Config;
   sshServices: ISshService[];

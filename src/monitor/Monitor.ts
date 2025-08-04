@@ -1,5 +1,5 @@
 import IAlertCondition from '@interfaces/alert-conditions/IAlertCondition';
-import { IInstanceReboot } from '@interfaces/index';
+import { IInstanceRebootService } from '@interfaces/index';
 import IRestartCondition from '@interfaces/restart-conditions/IRestartCondition';
 import IAlertService from '@interfaces/services/alert/IAlertService';
 import IAllowanceListService from '@interfaces/services/allowance-list/IAllowanceListService';
@@ -26,7 +26,7 @@ export default class Monitor {
   public notificationService: INotificationService;
   public restartConditions: IRestartCondition[];
   public alertConditions: IAlertCondition[];
-  public instanceReboot?: IInstanceReboot;
+  public instanceReboot: IInstanceRebootService;
 
   public forceRestart: boolean;
 

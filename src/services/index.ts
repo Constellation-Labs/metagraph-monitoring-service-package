@@ -12,4 +12,5 @@ export { default as S3AllowanceListService } from './allowance-list/S3AllowanceL
 export { default as Ssh2Service } from './ssh/Ssh2Service';
 export { default as NoNotificationService } from './notification/NoNotificationService';
 export { default as DiscordNotificationService } from './notification/DiscordNotificationService';
-export { default as AWSInstanceReboot } from './instance-reboot/AWSInstanceReboot';
+export { default as AWSInstanceRebootService } from './instance-reboot/AWSInstanceRebootService';
+export { default as NoRebootService } from './instance-reboot/NoRebootService';

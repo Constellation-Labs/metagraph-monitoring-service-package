@@ -5,7 +5,7 @@ import {
   EC2ClientConfig,
 } from '@aws-sdk/client-ec2';
 
-import { IInstanceReboot } from '@interfaces/index';
+import { IInstanceRebootService } from '@interfaces/index';
 import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import ISshService from '@interfaces/services/ssh/ISshService';
@@ -31,7 +31,9 @@ interface AWSCredentials {
     ]
 }
  */
-export default class AWSInstanceReboot implements IInstanceReboot {
+export default class AWSInstanceRebootService
+  implements IInstanceRebootService
+{
   name = 'AWS Instance Reboot';
   config: Config;
   sshServices: ISshService[];
