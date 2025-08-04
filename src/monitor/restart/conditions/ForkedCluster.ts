@@ -12,6 +12,17 @@ import { Config, MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
 import { FullLayer } from '../groups';
 
+/**
+ * Detects and handles forked clusters in the metagraph network by implementing the
+ * `IRestartCondition` interface.
+ *
+ * This class checks if ML0, CL1, or DL1 layers are forked by comparing the cluster view
+ * of each node against the expected node list. If a fork is detected, it sets flags to
+ * trigger a full-layer restart.
+ *
+ * Use `shouldRestart()` to determine if a restart is needed, and `triggerRestart()` to
+ * execute it.
+ */
 export default class ForkedCluster implements IRestartCondition {
   private monitoringConfiguration: MonitoringConfiguration;
 
