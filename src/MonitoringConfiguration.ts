@@ -17,6 +17,7 @@ import ConstellationMetagraphService from '@services/metagraph/ConstellationMeta
 import NoNotificationService from '@services/notification/NoNotificationService';
 import NoSeedlistService from '@services/seedlist/NoSeedlistService';
 
+import { IInstanceReboot } from './interfaces';
 import DiskSpaceLimit from './monitor/alert/conditions/DiskSpaceLimit';
 import OwnerWalletOutOfFunds from './monitor/alert/conditions/OwnerWalletOutOfFunds';
 import L0ForkedNodes from './monitor/restart/conditions/L0ForkedNodes';
@@ -91,6 +92,7 @@ export class MonitoringConfiguration {
   public loggerService: ILoggerService;
   public alertService: IAlertService;
   public notificationService: INotificationService;
+  public instanceReboot?: IInstanceReboot;
   private restartConditions: IRestartCondition[];
   private alertConditions: IAlertCondition[];
 
@@ -109,6 +111,7 @@ export class MonitoringConfiguration {
     },
     customRestartConditions?: IRestartCondition[],
     customAlertConditions?: IAlertCondition[],
+    customInstanceReboot?: IInstanceReboot,
   ) {
     this.config = config;
 
@@ -143,6 +146,8 @@ export class MonitoringConfiguration {
     );
 
     this.alertConditions = this.buildAlertConditions(customAlertConditions);
+
+    this.instanceReboot = customInstanceReboot;
   }
 
   private buildSshServices(logger: ILoggerService): ISshService[] {
@@ -194,6 +199,10 @@ export class MonitoringConfiguration {
 
   getRestartConditions(): IRestartCondition[] {
     return this.restartConditions;
+  }
+
+  getInstanceReboot(): IInstanceReboot | undefined {
+    return this.instanceReboot;
   }
 
   private buildAlertConditions(

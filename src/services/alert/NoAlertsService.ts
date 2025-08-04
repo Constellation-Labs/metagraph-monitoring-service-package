@@ -30,4 +30,8 @@ export default class NoAlertsService implements IAlertService {
   async createInformativeAlert(): Promise<void> {
     this.customLog(`No alerts`);
   }
+
+  async unhealthyCloudInstanceAlert(): Promise<void> {
+    this.customLog(`No alerts`);
+  }
 }

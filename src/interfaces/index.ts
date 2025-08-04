@@ -4,6 +4,9 @@ import IRestartCondition, {
 import IAlertService from './services/alert/IAlertService';
 import IAllowanceListService from './services/allowance-list/IAllowanceListService';
 import IGlobalNetworkService from './services/global-network/IGlobalNetworkService';
+import IInstanceReboot, {
+  ShouldRebootInfo,
+} from './services/instance-reboot/IInstanceReboot';
 import ILoggerService from './services/logger/ILoggerService';
 import IMetagraphService from './services/metagraph/IMetagraphService';
 import INotificationService from './services/notification/INotificationService';
@@ -21,4 +24,6 @@ export type {
   IAllowanceListService,
   ISshService,
   INotificationService,
+  IInstanceReboot,
+  ShouldRebootInfo,
 };

@@ -149,6 +149,29 @@ export default class OpsgenieAlertService implements IAlertService {
     };
   };
 
+  private buildUnhealthyNodesStartedRestartAlertBody = (
+    instanceId: string,
+    alertLevel: 'P1' | 'P2' | 'P3',
+  ): object => {
+    const { name: metagraphName, id } = this.config.metagraph;
+    const { name: networkName } = this.config.network;
+
+    return {
+      message: `Informative Alert - ${metagraphName} - Instance: ${instanceId}`,
+      description: `Instance ${instanceId} unhealthy, triggering reboot`,
+      actions: ['Metagraph', 'Alert'],
+      alias: `${id}_unhealthy_instances`,
+      tags: [this.valid_network_tags_opsgenie[networkName as NetworkNames]],
+      details: {
+        metagraphId: id,
+        network: networkName,
+        metagraphName: metagraphName,
+      },
+      entity: 'Metagraph',
+      priority: alertLevel,
+    };
+  };
+
   private async createRemoteAlert(body: object) {
     try {
       await axios.post(this.opsgenie_alert_url, body, {
@@ -199,6 +222,8 @@ export default class OpsgenieAlertService implements IAlertService {
       alias = `${this.config.metagraph.id}_restart`;
     } else if (alertType === 'RestartFailed') {
       alias = `${this.config.metagraph.id}_failure_restarted`;
+    } else if (alertType === 'UnhealthyInstances') {
+      alias = `${this.config.metagraph.id}_unhealthy_instances`;
     } else {
       alias = `${this.config.metagraph.id}_informative_${alertName}`;
     }
@@ -244,6 +269,20 @@ export default class OpsgenieAlertService implements IAlertService {
       message,
       alertName,
       alertPriority,
+    );
+
+    await this.createRemoteAlert(alertBody);
+    this.customLog(`Alert created`);
+  }
+
+  async unhealthyCloudInstanceAlert(
+    instanceId: string,
+    alertLevel: 'P1' | 'P2' | 'P3',
+  ): Promise<void> {
+    this.customLog(`Creating remote alert`);
+    const alertBody = this.buildUnhealthyNodesStartedRestartAlertBody(
+      instanceId,
+      alertLevel,
     );
 
     await this.createRemoteAlert(alertBody);
