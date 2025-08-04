@@ -19,6 +19,7 @@ import NoSeedlistService from '@services/seedlist/NoSeedlistService';
 
 import DiskSpaceLimit from './monitor/alert/conditions/DiskSpaceLimit';
 import OwnerWalletOutOfFunds from './monitor/alert/conditions/OwnerWalletOutOfFunds';
+import ForkedCluster from './monitor/restart/conditions/ForkedCluster';
 import L0ForkedNodes from './monitor/restart/conditions/L0ForkedNodes';
 import SnapshotsStopped from './monitor/restart/conditions/SnapshotsStopped';
 import UnhealthyNodes from './monitor/restart/conditions/UnhealthyNodes';
@@ -177,6 +178,10 @@ export class MonitoringConfiguration {
 
     if (default_restart_conditions.includes('L0ForkedNodes')) {
       restartConditions.push(new L0ForkedNodes(this));
+    }
+
+    if (default_restart_conditions.includes('ForkedCluster')) {
+      restartConditions.push(new ForkedCluster(this));
     }
 
     if (customRestartConditions) {

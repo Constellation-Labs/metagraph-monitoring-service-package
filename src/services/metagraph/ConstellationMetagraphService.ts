@@ -2,6 +2,7 @@ import axios from 'axios';
 
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService, {
+  MetagraphClusterInfo,
   MetagraphNode,
   MetagraphNodeInfo,
   MetagraphSnapshotInfo,
@@ -179,5 +180,20 @@ export default class ConstellationMetagraphService
     }
 
     return forkedNodes;
+  }
+
+  async getNodeClusterPOV(
+    nodeIp: string,
+    nodePort: number,
+  ): Promise<MetagraphClusterInfo[]> {
+    try {
+      const response = await axios.get(
+        `http://${nodeIp}:${nodePort}/cluster/info`,
+      );
+      const nodeInfo: MetagraphClusterInfo[] = response.data;
+      return nodeInfo;
+    } catch (e) {
+      return [];
+    }
   }
 }

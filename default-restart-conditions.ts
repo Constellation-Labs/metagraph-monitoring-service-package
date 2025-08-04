@@ -3,6 +3,7 @@ import {
   SnapshotsStopped,
   UnhealthyNodes,
   L0ForkedNodes,
+  ForkedCluster,
 } from './src/monitor/restart/conditions';
 
 export {
@@ -10,4 +11,5 @@ export {
   SnapshotsStopped,
   UnhealthyNodes,
   L0ForkedNodes,
+  ForkedCluster,
 };

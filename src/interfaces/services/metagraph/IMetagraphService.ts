@@ -30,6 +30,14 @@ export type MetagraphNodeInfo = {
   p2pPort: number;
 };
 
+export type MetagraphClusterInfo = {
+  state: string;
+  id: string;
+  ip: string;
+  publicPort: number;
+  p2pPort: number;
+};
+
 export default interface IMetagraphService {
   config: Config;
   metagraphId: string;
@@ -46,4 +54,8 @@ export default interface IMetagraphService {
   checkIfNodeIsHealthy(nodeIp: string, nodePort: number): Promise<boolean>;
 
   getL0ForkedNodes(nodes: MetagraphNode[]): Promise<MetagraphNode[]>;
+  getNodeClusterPOV(
+    nodeIp: string,
+    nodePort: number,
+  ): Promise<MetagraphClusterInfo[]>;
 }
