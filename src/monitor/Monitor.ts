@@ -1,4 +1,5 @@
 import IAlertCondition from '@interfaces/alert-conditions/IAlertCondition';
+import { IInstanceRebootService } from '@interfaces/index';
 import IRestartCondition from '@interfaces/restart-conditions/IRestartCondition';
 import IAlertService from '@interfaces/services/alert/IAlertService';
 import IAllowanceListService from '@interfaces/services/allowance-list/IAllowanceListService';
@@ -25,6 +26,7 @@ export default class Monitor {
   public notificationService: INotificationService;
   public restartConditions: IRestartCondition[];
   public alertConditions: IAlertCondition[];
+  public instanceReboot: IInstanceRebootService;
 
   public forceRestart: boolean;
 
@@ -45,11 +47,13 @@ export default class Monitor {
     this.forceRestart = forceRestart;
     this.restartConditions = monitoringConfiguration.getRestartConditions();
     this.alertConditions = monitoringConfiguration.getAlertConditions();
+    this.instanceReboot = monitoringConfiguration.getInstanceReboot();
   }
 
   private async closeRemoteAlerts() {
     await this.alertService.closeAlert('RestartStarted');
     await this.alertService.closeAlert('RestartFailed');
+    await this.alertService.closeAlert('UnhealthyInstances');
   }
 
   async execute() {

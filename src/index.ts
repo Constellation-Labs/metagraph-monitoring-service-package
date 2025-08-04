@@ -2,6 +2,7 @@ import IRestartCondition from '@interfaces/restart-conditions/IRestartCondition'
 import IAlertService from '@interfaces/services/alert/IAlertService';
 import IAllowanceListService from '@interfaces/services/allowance-list/IAllowanceListService';
 import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
+import IInstanceRebootService from '@interfaces/services/instance-reboot/IInstanceRebootService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
 import INotificationService from '@interfaces/services/notification/INotificationService';
@@ -29,6 +30,7 @@ export default class MonitoringApp {
       allowanceListService?: IAllowanceListService;
       alertService?: IAlertService;
       notificationService?: INotificationService;
+      instanceRebootService?: IInstanceRebootService;
     },
     customRestartConditions?: IRestartCondition[],
     notificationMessage?: string,
@@ -43,12 +45,33 @@ export default class MonitoringApp {
     this.notificationMessage = notificationMessage;
   }
 
-  private async initializeSshConnections() {
-    await Promise.all(
-      this.configuration.sshServices.map((sshService) =>
-        sshService.setConnection(),
-      ),
-    );
+  private async initializeSshConnections(monitor: Monitor): Promise<boolean> {
+    let hasFailure = false;
+
+    for (const sshService of this.configuration.sshServices) {
+      try {
+        await sshService.setConnection();
+      } catch (e) {
+        hasFailure = true;
+        const instanceId = sshService.metagraphNode.instance_id;
+        if (!instanceId) {
+          this.configuration.loggerService.info(
+            `Instance unhealthy but instance id not provided`,
+          );
+          continue;
+        } else {
+          await monitor.instanceReboot.rebootInstance(instanceId);
+          await monitor.alertService.unhealthyCloudInstanceAlert(
+            instanceId,
+            'P1',
+          );
+        }
+
+        console.error(`Failed to initialize SSH connection for service`, e);
+      }
+    }
+
+    return !hasFailure;
   }
 
   private async finishSshConnections() {
@@ -61,16 +84,22 @@ export default class MonitoringApp {
 
   public async checkMetagraphHealthOnce(): Promise<void> {
     try {
+      const monitor = new Monitor(this.configuration, this.forceRestart);
       try {
-        await this.initializeSshConnections();
+        const successfullyInitialized =
+          await this.initializeSshConnections(monitor);
+        if (!successfullyInitialized) {
+          this.configuration.loggerService.warn(
+            `Unhealthy instances detected, triggering a restart`,
+          );
+          return;
+        }
       } catch (e) {
         const message = `Could not establish connection with node(s). Error: ${JSON.stringify(e)}`;
         this.configuration.alertService.createRestartFailed(message);
         this.configuration.loggerService.warn(message);
         return;
       }
-
-      const monitor = new Monitor(this.configuration, this.forceRestart);
       if (this.notificationMessage?.trim()) {
         await monitor.executeWithNotification(this.notificationMessage || '');
       } else {

@@ -11,12 +11,14 @@ import ISshService from '@interfaces/services/ssh/ISshService';
 import NoAlertsService from '@services/alert/NoAlertsService';
 import NoAllowanceListService from '@services/allowance-list/NoAllowanceListService';
 import ConstellationGlobalNetworkService from '@services/global-network/ConstellationGlobalNetworkService';
+import NoRebootService from '@services/instance-reboot/NoRebootService';
 import ConsoleLoggerService from '@services/logger/ConsoleLoggerService';
 import FileLoggerService from '@services/logger/FileLoggerService';
 import ConstellationMetagraphService from '@services/metagraph/ConstellationMetagraphService';
 import NoNotificationService from '@services/notification/NoNotificationService';
 import NoSeedlistService from '@services/seedlist/NoSeedlistService';
 
+import { IInstanceRebootService } from './interfaces';
 import DiskSpaceLimit from './monitor/alert/conditions/DiskSpaceLimit';
 import OwnerWalletOutOfFunds from './monitor/alert/conditions/OwnerWalletOutOfFunds';
 import L0ForkedNodes from './monitor/restart/conditions/L0ForkedNodes';
@@ -91,6 +93,7 @@ export class MonitoringConfiguration {
   public loggerService: ILoggerService;
   public alertService: IAlertService;
   public notificationService: INotificationService;
+  public instanceRebootService: IInstanceRebootService;
   private restartConditions: IRestartCondition[];
   private alertConditions: IAlertCondition[];
 
@@ -109,6 +112,7 @@ export class MonitoringConfiguration {
     },
     customRestartConditions?: IRestartCondition[],
     customAlertConditions?: IAlertCondition[],
+    customInstanceReboot?: IInstanceRebootService,
   ) {
     this.config = config;
 
@@ -143,6 +147,9 @@ export class MonitoringConfiguration {
     );
 
     this.alertConditions = this.buildAlertConditions(customAlertConditions);
+
+    this.instanceRebootService =
+      customInstanceReboot ?? new NoRebootService(this);
   }
 
   private buildSshServices(logger: ILoggerService): ISshService[] {
@@ -194,6 +201,10 @@ export class MonitoringConfiguration {
 
   getRestartConditions(): IRestartCondition[] {
     return this.restartConditions;
+  }
+
+  getInstanceReboot(): IInstanceRebootService {
+    return this.instanceRebootService;
   }
 
   private buildAlertConditions(

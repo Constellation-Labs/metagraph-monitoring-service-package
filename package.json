@@ -68,6 +68,7 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
+    "@aws-sdk/client-ec2": "^3.855.0",
     "@aws-sdk/client-ssm": "^3.549.0",
     "aws-sdk": "^2.1594.0",
     "axios": "^1.6.8",

@@ -2,7 +2,11 @@ import { Config } from 'src/MonitoringConfiguration';
 
 import ILoggerService from '../logger/ILoggerService';
 
-export type AlertType = 'RestartStarted' | 'RestartFailed' | 'Informative';
+export type AlertType =
+  | 'RestartStarted'
+  | 'RestartFailed'
+  | 'Informative'
+  | 'UnhealthyInstances';
 
 export default interface IAlertService {
   loggerService: ILoggerService;
@@ -19,5 +23,10 @@ export default interface IAlertService {
     message: string,
     alertName: string,
     alertPriority: 'P1' | 'P2' | 'P3' | 'P4' | 'P5',
+  ): Promise<void>;
+
+  unhealthyCloudInstanceAlert(
+    instanceId: string,
+    alertLevel: 'P1' | 'P2' | 'P3',
   ): Promise<void>;
 }
