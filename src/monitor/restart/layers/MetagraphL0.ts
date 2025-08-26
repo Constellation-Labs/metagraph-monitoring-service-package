@@ -9,6 +9,7 @@ import ISshService from '@interfaces/services/ssh/ISshService';
 import { Layers, NodeStatuses } from '@shared/constants';
 import { Config, MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
+import sleep from '../utils/sleep';
 import waitForNode from '../utils/wait-for-node';
 
 export class MetagraphL0 {
@@ -91,6 +92,7 @@ export class MetagraphL0 {
       validatorHost,
       this.referenceSourceNode,
     );
+    await sleep(5 * 1000);
     await validatorMl0.startValidatorNodeL0();
     await waitForNode(
       this.config,
@@ -99,6 +101,7 @@ export class MetagraphL0 {
       NodeStatuses.READY_TO_JOIN,
       this.loggerService,
     );
+    await sleep(5 * 1000);
     await validatorMl0.joinNodeToCluster(this.currentNode);
   }
 

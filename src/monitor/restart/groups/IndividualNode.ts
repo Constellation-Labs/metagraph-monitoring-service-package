@@ -10,6 +10,7 @@ import { DataL1 } from '../layers/DataL1';
 import { MetagraphL0 } from '../layers/MetagraphL0';
 import killCurrentExecution from '../utils/kill-current-execution';
 import saveCurrentLogs from '../utils/save-current-logs';
+import sleep from '../utils/sleep';
 import waitForNode from '../utils/wait-for-node';
 
 export class IndividualNode {
@@ -87,6 +88,7 @@ export class IndividualNode {
         NodeStatuses.READY_TO_JOIN,
         this.loggerService,
       );
+      await sleep(5 * 1000);
       await metagraphL0.joinNodeToCluster(this.referenceMetagraphNode);
       return;
     }
@@ -106,6 +108,7 @@ export class IndividualNode {
         NodeStatuses.READY_TO_JOIN,
         this.loggerService,
       );
+      await sleep(5 * 1000);
       await currencyL1.joinNodeToCluster(this.referenceMetagraphNode);
       return;
     }
@@ -125,6 +128,7 @@ export class IndividualNode {
         NodeStatuses.READY_TO_JOIN,
         this.loggerService,
       );
+      await sleep(5 * 1000);
       await dataL1.joinNodeToCluster(this.referenceMetagraphNode);
       return;
     }

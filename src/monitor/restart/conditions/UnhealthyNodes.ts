@@ -271,7 +271,14 @@ export default class UnhealthyNodes implements IRestartCondition {
             metagraphNode.ip,
             this.config.metagraph.layers.cl1.ports.public,
           );
-        if (!cl1NodeIsHealthy) {
+
+        const cl1NodesWithDifferentPOV =
+          nodesWithDifferentPOV[Layers.CL1] || [];
+
+        if (
+          !cl1NodeIsHealthy ||
+          cl1NodesWithDifferentPOV.includes(metagraphNode.ip)
+        ) {
           this.currencyL1UnhealthyNodes.push(sshService);
         }
       }
@@ -283,7 +290,13 @@ export default class UnhealthyNodes implements IRestartCondition {
             this.config.metagraph.layers.dl1!.ports!.public,
           );
 
-        if (!dl1NodeIsHealthy) {
+        const dl1NodesWithDifferentPOV =
+          nodesWithDifferentPOV[Layers.DL1] || [];
+
+        if (
+          !dl1NodeIsHealthy ||
+          dl1NodesWithDifferentPOV.includes(metagraphNode.ip)
+        ) {
           this.dataL1NUnhealthyNodes.push(sshService);
         }
       }

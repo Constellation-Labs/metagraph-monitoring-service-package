@@ -9,6 +9,7 @@ import ISshService from '@interfaces/services/ssh/ISshService';
 import { Layers, NodeStatuses } from '@shared/constants';
 import { Config, MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
+import sleep from '../utils/sleep';
 import waitForNode from '../utils/wait-for-node';
 
 export class DataL1 {
@@ -112,6 +113,7 @@ export class DataL1 {
       this.currentNode,
       this.referenceSourceNode,
     );
+    await sleep(5 * 1000);
     await validatorDl1.startValidatorNodeDl1();
     await waitForNode(
       this.config,
@@ -120,6 +122,7 @@ export class DataL1 {
       NodeStatuses.READY_TO_JOIN,
       this.loggerService,
     );
+    await sleep(5 * 1000);
     await validatorDl1.joinNodeToCluster(this.currentNode);
   }
 
