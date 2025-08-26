@@ -1,10 +1,14 @@
+import { createHash } from 'crypto';
+
 import IRestartCondition, {
   ShouldRestartInfo,
 } from '@interfaces/restart-conditions/IRestartCondition';
 import IAllowanceListService from '@interfaces/services/allowance-list/IAllowanceListService';
 import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
-import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
+import IMetagraphService, {
+  MetagraphClusterInfo,
+} from '@interfaces/services/metagraph/IMetagraphService';
 import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 import { AvailableLayers, Layers } from '@shared/constants';
@@ -83,6 +87,7 @@ export default class UnhealthyNodes implements IRestartCondition {
       this.layerRestarted = true;
     }
   }
+
   private async restartLayerNodes(
     unhealthyNodes: ISshService[],
     layer: AvailableLayers,
@@ -129,11 +134,119 @@ export default class UnhealthyNodes implements IRestartCondition {
     }
   }
 
+  private async getNodesPOV() {
+    const allMl0POV: Record<string, MetagraphClusterInfo[]> = {};
+    const allCl1POV: Record<string, MetagraphClusterInfo[]> = {};
+    const allDl1POV: Record<string, MetagraphClusterInfo[]> = {};
+
+    for (const sshService of this.sshServices) {
+      this.customLogger(
+        `Fetching ML0 nodes POV: ${sshService.metagraphNode.ip}`,
+      );
+      const ml0POV = await this.metagraphService.getNodeClusterPOV(
+        sshService.metagraphNode.ip,
+        this.config.metagraph.layers.ml0.ports.public,
+      );
+      allMl0POV[sshService.metagraphNode.ip] = ml0POV;
+
+      if (!this.config.metagraph.layers.cl1.ignore_layer) {
+        this.customLogger(
+          `Fetching CL1 nodes POV: ${sshService.metagraphNode.ip}`,
+        );
+        const cl1POV = await this.metagraphService.getNodeClusterPOV(
+          sshService.metagraphNode.ip,
+          this.config.metagraph.layers.cl1.ports.public,
+        );
+        allCl1POV[sshService.metagraphNode.ip] = cl1POV;
+      }
+
+      if (!this.config.metagraph.layers.dl1.ignore_layer) {
+        this.customLogger(
+          `Fetching DL1 nodes POV: ${sshService.metagraphNode.ip}`,
+        );
+        const dl1POV = await this.metagraphService.getNodeClusterPOV(
+          sshService.metagraphNode.ip,
+          this.config.metagraph.layers.dl1.ports.public,
+        );
+        allDl1POV[sshService.metagraphNode.ip] = dl1POV;
+      }
+    }
+
+    return {
+      allMl0POV,
+      allCl1POV,
+      allDl1POV,
+    };
+  }
+
+  private performCheckForDifferentPOV(
+    allClusterPOV: Record<string, MetagraphClusterInfo[]>,
+    layer: string,
+  ) {
+    const normalizePOV = (infos: MetagraphClusterInfo[]) =>
+      [...infos].sort((a, b) => a.id.localeCompare(b.id));
+
+    const hashPOV = (infos: MetagraphClusterInfo[]): string => {
+      const normalized = normalizePOV(infos);
+      const str = JSON.stringify(normalized);
+      return createHash('sha256').update(str).digest('hex');
+    };
+
+    const povHashes = Object.entries(allClusterPOV).map(([ip, infos]) => ({
+      ip,
+      hash: hashPOV(infos),
+    }));
+
+    const freq: Record<string, number> = {};
+    for (const { hash } of povHashes) {
+      freq[hash] = (freq[hash] ?? 0) + 1;
+    }
+
+    const majorityHash = Object.entries(freq).sort((a, b) => b[1] - a[1])[0][0];
+
+    this.customLogger(`${layer} POV HASHES: ${JSON.stringify(povHashes)}`);
+    this.customLogger(`${layer} MAJORITY HASH: ${majorityHash}`);
+
+    const unhealthyNodes = povHashes
+      .filter(({ hash }) => hash !== majorityHash)
+      .map(({ ip }) => ip);
+
+    return unhealthyNodes;
+  }
+
+  private async getNodesWithDifferentPOV() {
+    this.customLogger(`Fetching nodes POV`);
+    const { allMl0POV, allCl1POV, allDl1POV } = await this.getNodesPOV();
+    const unhealthyNodesPerLayer: Record<string, string[]> = {};
+    if (Object.keys(allMl0POV).length > 0) {
+      unhealthyNodesPerLayer[Layers.ML0] = this.performCheckForDifferentPOV(
+        allMl0POV,
+        Layers.ML0,
+      );
+    }
+    if (Object.keys(allCl1POV).length > 0) {
+      unhealthyNodesPerLayer[Layers.CL1] = this.performCheckForDifferentPOV(
+        allCl1POV,
+        Layers.CL1,
+      );
+    }
+    if (Object.keys(allDl1POV).length > 0) {
+      unhealthyNodesPerLayer[Layers.DL1] = this.performCheckForDifferentPOV(
+        allDl1POV,
+        Layers.DL1,
+      );
+    }
+
+    return unhealthyNodesPerLayer;
+  }
+
   async shouldRestart(): Promise<ShouldRestartInfo> {
     this.customLogger(`Checking if we have unhealthy nodes`);
     this.metagraphL0UnhealthyNodes = [];
     this.currencyL1UnhealthyNodes = [];
     this.dataL1NUnhealthyNodes = [];
+    const nodesWithDifferentPOV = await this.getNodesWithDifferentPOV();
+
     for (const sshService of this.sshServices) {
       const { metagraphNode } = sshService;
       this.customLogger(`[ML0] Checking node ${metagraphNode.ip}`);
@@ -142,7 +255,12 @@ export default class UnhealthyNodes implements IRestartCondition {
         metagraphNode.ip,
         this.config.metagraph.layers.ml0.ports.public,
       );
-      if (!ml0NodeIsHealthy) {
+
+      const ml0NodesWithDifferentPOV = nodesWithDifferentPOV[Layers.ML0] || [];
+      if (
+        !ml0NodeIsHealthy ||
+        ml0NodesWithDifferentPOV.includes(metagraphNode.ip)
+      ) {
         this.metagraphL0UnhealthyNodes.push(sshService);
       }
 
