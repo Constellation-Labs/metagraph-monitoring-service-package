@@ -135,20 +135,10 @@ export default class UnhealthyNodes implements IRestartCondition {
   }
 
   private async getNodesPOV() {
-    const allMl0POV: Record<string, MetagraphClusterInfo[]> = {};
     const allCl1POV: Record<string, MetagraphClusterInfo[]> = {};
     const allDl1POV: Record<string, MetagraphClusterInfo[]> = {};
 
     for (const sshService of this.sshServices) {
-      this.customLogger(
-        `Fetching ML0 nodes POV: ${sshService.metagraphNode.ip}`,
-      );
-      const ml0POV = await this.metagraphService.getNodeClusterPOV(
-        sshService.metagraphNode.ip,
-        this.config.metagraph.layers.ml0.ports.public,
-      );
-      allMl0POV[sshService.metagraphNode.ip] = ml0POV;
-
       if (!this.config.metagraph.layers.cl1.ignore_layer) {
         this.customLogger(
           `Fetching CL1 nodes POV: ${sshService.metagraphNode.ip}`,
@@ -173,7 +163,6 @@ export default class UnhealthyNodes implements IRestartCondition {
     }
 
     return {
-      allMl0POV,
       allCl1POV,
       allDl1POV,
     };
@@ -216,14 +205,9 @@ export default class UnhealthyNodes implements IRestartCondition {
 
   private async getNodesWithDifferentPOV() {
     this.customLogger(`Fetching nodes POV`);
-    const { allMl0POV, allCl1POV, allDl1POV } = await this.getNodesPOV();
+    const { allCl1POV, allDl1POV } = await this.getNodesPOV();
     const unhealthyNodesPerLayer: Record<string, string[]> = {};
-    if (Object.keys(allMl0POV).length > 0) {
-      unhealthyNodesPerLayer[Layers.ML0] = this.performCheckForDifferentPOV(
-        allMl0POV,
-        Layers.ML0,
-      );
-    }
+
     if (Object.keys(allCl1POV).length > 0) {
       unhealthyNodesPerLayer[Layers.CL1] = this.performCheckForDifferentPOV(
         allCl1POV,
@@ -256,11 +240,7 @@ export default class UnhealthyNodes implements IRestartCondition {
         this.config.metagraph.layers.ml0.ports.public,
       );
 
-      const ml0NodesWithDifferentPOV = nodesWithDifferentPOV[Layers.ML0] || [];
-      if (
-        !ml0NodeIsHealthy ||
-        ml0NodesWithDifferentPOV.includes(metagraphNode.ip)
-      ) {
+      if (!ml0NodeIsHealthy) {
         this.metagraphL0UnhealthyNodes.push(sshService);
       }
 
