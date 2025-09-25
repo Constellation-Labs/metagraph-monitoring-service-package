@@ -17,6 +17,7 @@ import saveCurrentLogs from '../utils/save-current-logs';
 type LastMetagraphBlockExplorerResponse = {
   data?: {
     hash?: string;
+    ordinal?: number;
   };
 };
 
@@ -150,19 +151,20 @@ export class FullMetagraph {
     }
 
     const lastSnapshotHash = beResponse.data?.hash;
-    if (!lastSnapshotHash) {
-      throw new Error('Last metagraph snapshot hash not found');
+    const lastSnapshotOrdinal = beResponse.data?.ordinal;
+    if (!lastSnapshotHash || !lastSnapshotOrdinal) {
+      throw new Error('Last metagraph snapshot hash/ordinal not found');
     }
 
     this.customLogger(
-      `Last metagraph snapshot found in URL ${url}: ${lastSnapshotHash}`,
+      `Last metagraph snapshot found in URL ${url}: ${lastSnapshotHash} - ${lastSnapshotOrdinal}`,
     );
 
     for (const sshService of this.sshServices) {
       try {
         const command = `
         cd metagraph-l0
-        ls data/incremental_snapshot/hash/${lastSnapshotHash.slice(0, 3)}/${lastSnapshotHash.slice(3, 6)}/${lastSnapshotHash}
+        ls data/incremental_snapshot/hash/${lastSnapshotHash.slice(0, 3)}/${lastSnapshotHash.slice(3, 6)}/${lastSnapshotHash} && ls data/calculated_state/${lastSnapshotOrdinal}
         `;
 
         await sshService.executeCommand(command, false);
@@ -178,12 +180,9 @@ export class FullMetagraph {
         );
       }
     }
-
-    this.customLogger(
-      `No node contains the last snapshot ${lastSnapshotHash}. Defaulting to the first node to download from GL0`,
-    );
-
-    return this.sshServices[0];
+    const message = `No node contains the last snapshot ${lastSnapshotHash}`;
+    this.customLogger(message);
+    throw Error(message);
   }
 
   async performRestart() {
