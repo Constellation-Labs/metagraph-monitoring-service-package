@@ -7,7 +7,7 @@ import { Config, MonitoringConfiguration } from 'src/MonitoringConfiguration';
 import { FullMetagraph } from './FullMetagraph';
 import { CurrencyL1 } from '../layers/CurrencyL1';
 import { DataL1 } from '../layers/DataL1';
-import killCurrentExecution from '../utils/kill-current-execution';
+import { killJavaJarByLayer } from '../utils/kill-current-execution';
 import saveCurrentLogs from '../utils/save-current-logs';
 
 export class FullLayer {
@@ -43,9 +43,10 @@ export class FullLayer {
         `Killing ${this.layer} current processes in node ${sshService.metagraphNode.ip}`,
       );
 
-      await killCurrentExecution(
+      await killJavaJarByLayer(
         sshService,
-        this.config.metagraph.layers[this.layer].ports.public,
+        this.layer,
+        sshService.metagraphNode.ip,
       );
 
       this.customLogger(

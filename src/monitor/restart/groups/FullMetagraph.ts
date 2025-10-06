@@ -10,8 +10,7 @@ import { Config, MonitoringConfiguration } from 'src/MonitoringConfiguration';
 import { CurrencyL1 } from '../layers/CurrencyL1';
 import { DataL1 } from '../layers/DataL1';
 import { MetagraphL0 } from '../layers/MetagraphL0';
-import cleanupSnapshotsGreaterThanRollback from '../utils/cleanup-snapshots-greater-than-rollback';
-import killCurrentExecution from '../utils/kill-current-execution';
+import { killJavaJarByLayer } from '../utils/kill-current-execution';
 import saveCurrentLogs from '../utils/save-current-logs';
 
 type LastMetagraphBlockExplorerResponse = {
@@ -52,20 +51,28 @@ export class FullMetagraph {
       this.customLogger(
         `Killing all layers current processes in node ${sshService.metagraphNode.ip}`,
       );
-      await killCurrentExecution(
+
+      await killJavaJarByLayer(
         sshService,
-        this.config.metagraph.layers.ml0.ports.public,
+        Layers.ML0,
+        sshService.metagraphNode.ip,
       );
 
-      await killCurrentExecution(
-        sshService,
-        this.config.metagraph.layers.cl1.ports.public,
-      );
+      if (!this.config.metagraph.layers.cl1.ignore_layer) {
+        await killJavaJarByLayer(
+          sshService,
+          Layers.CL1,
+          sshService.metagraphNode.ip,
+        );
+      }
 
-      await killCurrentExecution(
-        sshService,
-        this.config.metagraph.layers.dl1.ports.public,
-      );
+      if (!this.config.metagraph.layers.cl1.ignore_layer) {
+        await killJavaJarByLayer(
+          sshService,
+          Layers.DL1,
+          sshService.metagraphNode.ip,
+        );
+      }
 
       this.customLogger(
         `Finished killing processes in node ${sshService.metagraphNode.ip}`,
@@ -101,36 +108,6 @@ export class FullMetagraph {
 
     for (const sshService of this.sshServices) {
       promises.push(moveLogs(sshService));
-    }
-
-    await Promise.all(promises);
-  }
-
-  private async cleanupSnapshots() {
-    const initialSnapshot =
-      this.metagraphService.metagraphSnapshotInfo.lastSnapshotOrdinal + 1;
-    const finalSnapshot =
-      this.metagraphService.metagraphSnapshotInfo.lastSnapshotOrdinal + 500;
-
-    const promises = [];
-    const cleanupSnapshot = async (sshService: ISshService) => {
-      this.customLogger(
-        `Cleaning snapshots between ${initialSnapshot} and ${finalSnapshot} in node ${sshService.metagraphNode.ip}`,
-      );
-
-      await cleanupSnapshotsGreaterThanRollback(
-        sshService,
-        initialSnapshot,
-        finalSnapshot,
-      );
-
-      this.customLogger(
-        `Finished cleaning snapshots between ${initialSnapshot} and ${finalSnapshot} in node ${sshService.metagraphNode.ip}`,
-      );
-    };
-
-    for (const sshService of this.sshServices) {
-      promises.push(cleanupSnapshot(sshService));
     }
 
     await Promise.all(promises);
@@ -188,7 +165,6 @@ export class FullMetagraph {
   async performRestart() {
     await this.killProcesses();
     await this.moveLogs();
-    await this.cleanupSnapshots();
 
     const { nodes: metagraphNodes } = this.config.metagraph;
 

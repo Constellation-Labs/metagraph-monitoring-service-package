@@ -8,7 +8,7 @@ import { Config, MonitoringConfiguration } from 'src/MonitoringConfiguration';
 import { CurrencyL1 } from '../layers/CurrencyL1';
 import { DataL1 } from '../layers/DataL1';
 import { MetagraphL0 } from '../layers/MetagraphL0';
-import killCurrentExecution from '../utils/kill-current-execution';
+import { killJavaJarByLayer } from '../utils/kill-current-execution';
 import saveCurrentLogs from '../utils/save-current-logs';
 import sleep from '../utils/sleep';
 import waitForNode from '../utils/wait-for-node';
@@ -48,9 +48,10 @@ export class IndividualNode {
       `Killing ${this.layer} current processes in node ${this.sshService.metagraphNode.ip}`,
     );
 
-    await killCurrentExecution(
+    await killJavaJarByLayer(
       this.sshService,
-      this.config.metagraph.layers[this.layer].ports.public,
+      this.layer,
+      this.sshService.metagraphNode.ip,
     );
 
     this.customLogger(
