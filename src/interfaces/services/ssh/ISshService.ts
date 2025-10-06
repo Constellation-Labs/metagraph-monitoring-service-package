@@ -8,6 +8,10 @@ export default interface ISshService {
   loggerService: ILoggerService;
 
   setConnection(): Promise<void>;
-  executeCommand(command: string, ignoreErrors?: boolean): Promise<string>;
+  executeCommand(
+    command: string,
+    ignoreErrors?: boolean,
+    timeoutMs?: number,
+  ): Promise<string>;
   destroyConnection(): Promise<void>;
 }
