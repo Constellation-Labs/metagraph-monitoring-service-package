@@ -157,9 +157,11 @@ export class FullMetagraph {
         );
       }
     }
-    const message = `No node contains the last snapshot ${lastSnapshotHash}`;
+    const rollbackNode = this.sshServices[0];
+    const message = `No node contains the last snapshot ${lastSnapshotHash}, defaulting to first: ${rollbackNode.metagraphNode.ip}`;
+
     this.customLogger(message);
-    throw Error(message);
+    return rollbackNode;
   }
 
   async performRestart() {
