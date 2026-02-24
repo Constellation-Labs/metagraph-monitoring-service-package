@@ -66,7 +66,7 @@ export class FullMetagraph {
         );
       }
 
-      if (!this.config.metagraph.layers.cl1.ignore_layer) {
+      if (!this.config.metagraph.layers.dl1.ignore_layer) {
         await killJavaJarByLayer(
           sshService,
           Layers.DL1,
