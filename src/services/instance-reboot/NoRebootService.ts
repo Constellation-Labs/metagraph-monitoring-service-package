@@ -3,9 +3,12 @@ import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 import { Config, MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
+import { Logger } from '../../utils/logger';
+
 export default class NoRebootService implements IInstanceRebootService {
   name = 'No Reboot';
   loggerService: ILoggerService;
+  private logger: Logger;
   config: Config;
   sshServices: ISshService[];
 
@@ -13,13 +16,10 @@ export default class NoRebootService implements IInstanceRebootService {
     this.config = monitoringConfiguration.config;
     this.sshServices = monitoringConfiguration.sshServices;
     this.loggerService = monitoringConfiguration.loggerService;
-  }
-
-  private async customLogger(message: string) {
-    this.loggerService.info(`[NoRebootService] ${message}`);
+    this.logger = new Logger(this.loggerService, 'NoReboot');
   }
 
   async rebootInstance(): Promise<void> {
-    this.customLogger('No reboot');
+    this.logger.info('No reboot');
   }
 }

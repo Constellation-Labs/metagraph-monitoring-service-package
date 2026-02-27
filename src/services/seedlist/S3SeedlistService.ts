@@ -5,17 +5,17 @@ import ISeedlistService, {
 import { AvailableLayers } from '@shared/constants';
 import { MonitoringConfiguration, Config } from 'src/MonitoringConfiguration';
 
+import { Logger } from '../../utils/logger';
+
 export default class S3SeedlistService implements ISeedlistService {
   loggerService: ILoggerService;
+  private logger: Logger;
   config: Config;
 
   constructor(monitoringConfiguration: MonitoringConfiguration) {
     this.loggerService = monitoringConfiguration.loggerService;
+    this.logger = new Logger(this.loggerService, 'S3Seedlist');
     this.config = monitoringConfiguration.config;
-  }
-
-  private async customLogger(message: string) {
-    this.loggerService.info(`[S3SeedlistService] ${message}`);
   }
 
   private async buildS3SeedlistInformation(layer: AvailableLayers) {

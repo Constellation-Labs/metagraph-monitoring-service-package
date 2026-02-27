@@ -7,17 +7,17 @@ import ISeedlistService, {
 import { AvailableLayers } from '@shared/constants';
 import { MonitoringConfiguration, Config } from 'src/MonitoringConfiguration';
 
+import { Logger } from '../../utils/logger';
+
 export default class GithubSeedlistService implements ISeedlistService {
   loggerService: ILoggerService;
+  private logger: Logger;
   config: Config;
 
   constructor(monitoringConfiguration: MonitoringConfiguration) {
     this.loggerService = monitoringConfiguration.loggerService;
+    this.logger = new Logger(this.loggerService, 'GithubSeedlist');
     this.config = monitoringConfiguration.config;
-  }
-
-  private async customLogger(message: string) {
-    this.loggerService.info(`[GithubSeedlistService] ${message}`);
   }
 
   async checkIfSeedlistExists(url: string): Promise<boolean> {
@@ -34,7 +34,7 @@ export default class GithubSeedlistService implements ISeedlistService {
 
       return false;
     } catch (error) {
-      this.loggerService.error(`Seedlist not found in url: ${url}`);
+      this.logger.error(`Seedlist not found in url: ${url}`);
       return false;
     }
   }
@@ -60,7 +60,7 @@ export default class GithubSeedlistService implements ISeedlistService {
     };
 
     const seedlistUrl = `${base_url}/${version}/${file_name}`;
-    this.customLogger(`Checking if file exists on Github URL: ${seedlistUrl}`);
+    this.logger.info(`Checking if file exists on Github URL: ${seedlistUrl}`);
     const seedlistExists = await this.checkIfSeedlistExists(seedlistUrl);
     if (!seedlistExists) {
       throw Error(

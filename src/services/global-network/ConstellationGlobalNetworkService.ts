@@ -7,6 +7,8 @@ import IGlobalNetworkService, {
 import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import { MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
+import { Logger } from '../../utils/logger';
+
 export default class ConstellationGlobalNetworkService
   implements IGlobalNetworkService
 {
@@ -15,6 +17,7 @@ export default class ConstellationGlobalNetworkService
   beUrl: string;
   referenceSourceNode: NetworkNode;
   loggerService: ILoggerService;
+  private logger: Logger;
 
   constructor(monitoringConfiguration: MonitoringConfiguration) {
     const { name, nodes } = monitoringConfiguration.config.network;
@@ -26,10 +29,7 @@ export default class ConstellationGlobalNetworkService
     this.beUrl = `https://be-${name}.constellationnetwork.io/global-snapshots/latest`;
     this.referenceSourceNode = { ip: '', id: '', port: 0 };
     this.loggerService = monitoringConfiguration.loggerService;
-  }
-
-  private async customLogger(message: string) {
-    this.loggerService.info(`[ConstellationGlobalNetworkService] ${message}`);
+    this.logger = new Logger(this.loggerService, 'GlobalNetworkService');
   }
 
   async getLatestGlobalSnapshotOfNetwork(): Promise<GlobalSnapshotInfo> {
@@ -38,8 +38,8 @@ export default class ConstellationGlobalNetworkService
       const lastSnapshotOrdinal: number = response.data.data.ordinal;
       const lastSnapshotHash: string = response.data.data.hash;
 
-      this.customLogger(
-        `LAST SNAPSHOT OF NETWORK: ${this.name}. Ordinal: ${lastSnapshotOrdinal}. Hash: ${lastSnapshotHash}`,
+      this.logger.info(
+        `Last network snapshot: network=${this.name}, ordinal=${lastSnapshotOrdinal}, hash=${lastSnapshotHash}`,
       );
 
       return {
@@ -61,10 +61,10 @@ export default class ConstellationGlobalNetworkService
     const nodeUrl = `http://${nodeIp}:${nodePort}/global-snapshots/${snapshotHash}`;
     try {
       await axios.get(nodeUrl);
-      this.customLogger(`Snapshot exists on node: ${nodeIp}`);
+      this.logger.info(`Snapshot found on node ${nodeIp}`);
       return true;
     } catch (e) {
-      this.customLogger(`Snapshot does not exists on node: ${nodeIp}`);
+      this.logger.warn(`Snapshot not found on node ${nodeIp}`);
       return false;
     }
   }

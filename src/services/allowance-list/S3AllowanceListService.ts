@@ -4,17 +4,17 @@ import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import { AvailableLayers } from '@shared/constants';
 import { MonitoringConfiguration, Config } from 'src/MonitoringConfiguration';
 
+import { Logger } from '../../utils/logger';
+
 export default class S3AllowanceListService implements IAllowanceListService {
   loggerService: ILoggerService;
+  private logger: Logger;
   config: Config;
 
   constructor(monitoringConfiguration: MonitoringConfiguration) {
     this.loggerService = monitoringConfiguration.loggerService;
+    this.logger = new Logger(this.loggerService, 'S3AllowanceList');
     this.config = monitoringConfiguration.config;
-  }
-
-  private async customLogger(message: string) {
-    this.loggerService.info(`[S3AllowanceListService] ${message}`);
   }
 
   private async buildS3AllowanceListInformation(layer: AvailableLayers) {

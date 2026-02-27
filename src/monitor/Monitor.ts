@@ -1,86 +1,60 @@
 import IAlertCondition from '@interfaces/alert-conditions/IAlertCondition';
 import { IInstanceRebootService } from '@interfaces/index';
 import IRestartCondition from '@interfaces/restart-conditions/IRestartCondition';
-import IAlertService from '@interfaces/services/alert/IAlertService';
-import IAllowanceListService from '@interfaces/services/allowance-list/IAllowanceListService';
-import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
-import ILoggerService from '@interfaces/services/logger/ILoggerService';
-import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
-import INotificationService from '@interfaces/services/notification/INotificationService';
-import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
-import ISshService from '@interfaces/services/ssh/ISshService';
-import { MonitoringConfiguration, Config } from 'src/MonitoringConfiguration';
+import { MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
 import ForceMetagraphRestart from './restart/conditions/ForceMetagraphRestart';
+import { Logger } from '../utils/logger';
 
 export default class Monitor {
   public monitoringConfiguration: MonitoringConfiguration;
-  public config: Config;
-  public sshServices: ISshService[];
-  public metagraphService: IMetagraphService;
-  public globalNetworkService: IGlobalNetworkService;
-  public seedlistService: ISeedlistService;
-  public allowanceListService: IAllowanceListService;
-  public loggerService: ILoggerService;
-  public alertService: IAlertService;
-  public notificationService: INotificationService;
   public restartConditions: IRestartCondition[];
   public alertConditions: IAlertCondition[];
   public instanceReboot: IInstanceRebootService;
-
   public forceRestart: boolean;
+
+  private logger: Logger;
 
   constructor(
     monitoringConfiguration: MonitoringConfiguration,
     forceRestart: boolean,
   ) {
     this.monitoringConfiguration = monitoringConfiguration;
-    this.config = monitoringConfiguration.config;
-    this.sshServices = monitoringConfiguration.sshServices;
-    this.metagraphService = monitoringConfiguration.metagraphService;
-    this.globalNetworkService = monitoringConfiguration.globalNetworkService;
-    this.seedlistService = monitoringConfiguration.seedlistService;
-    this.allowanceListService = monitoringConfiguration.allowanceListService;
-    this.loggerService = monitoringConfiguration.loggerService;
-    this.alertService = monitoringConfiguration.alertService;
-    this.notificationService = monitoringConfiguration.notificationService;
     this.forceRestart = forceRestart;
     this.restartConditions = monitoringConfiguration.getRestartConditions();
     this.alertConditions = monitoringConfiguration.getAlertConditions();
     this.instanceReboot = monitoringConfiguration.getInstanceReboot();
+    this.logger = new Logger(monitoringConfiguration.loggerService, 'Monitor');
   }
 
   private async closeRemoteAlerts() {
-    await this.alertService.closeAlert('RestartStarted');
-    await this.alertService.closeAlert('RestartFailed');
-    await this.alertService.closeAlert('UnhealthyInstances');
+    const { alertService } = this.monitoringConfiguration;
+    await alertService.closeAlert('RestartStarted');
+    await alertService.closeAlert('RestartFailed');
+    await alertService.closeAlert('UnhealthyInstances');
   }
 
   async execute() {
+    const { metagraphService, globalNetworkService, alertService } =
+      this.monitoringConfiguration;
+
     try {
-      this.loggerService.info(
-        `##################### STARTING CHECK METAGRAPH HEALTH #####################`,
-      );
+      this.logger.info('Health check started');
 
-      this.loggerService.info(
-        'Getting valid global network reference source node',
-      );
-      await this.globalNetworkService.setReferenceSourceNode();
+      this.logger.info('Resolving global network reference node');
+      await globalNetworkService.setReferenceSourceNode();
 
-      this.loggerService.info('Getting last metagraph snapshot info');
-      await this.metagraphService.setLastMetagraphInfo();
-      this.loggerService.info(
-        `Last metagraph snapshot info: ${JSON.stringify(this.metagraphService.metagraphSnapshotInfo)}`,
-      );
+      this.logger.info('Fetching last metagraph snapshot');
+      await metagraphService.setLastMetagraphInfo();
 
       if (this.forceRestart) {
-        this.loggerService.info(
-          'Force restart provided, starting the complete restart of metagraph',
+        this.logger.info(
+          'Force restart provided, triggering full metagraph restart',
         );
 
-        await this.alertService.createRestartStarted(
+        await alertService.createRestartStarted(
           'ForceMetagraphRestart',
-          'ForceMetagraphRestart ',
+          'ForceMetagraphRestart',
         );
 
         await new ForceMetagraphRestart(
@@ -92,19 +66,19 @@ export default class Monitor {
         return;
       }
 
-      this.loggerService.info(`Checking conditions to metagraph restart`);
+      this.logger.info('Checking restart conditions');
       for (const restartCondition of this.restartConditions) {
         try {
-          const shoulRestartInfo = await restartCondition.shouldRestart();
-          if (shoulRestartInfo.shouldRestart) {
-            await this.alertService.createRestartStarted(
-              shoulRestartInfo.restartType,
+          const shouldRestartInfo = await restartCondition.shouldRestart();
+          if (shouldRestartInfo.shouldRestart) {
+            await alertService.createRestartStarted(
+              shouldRestartInfo.restartType,
               restartCondition.name,
-              shoulRestartInfo.lastMetagraphSnapshotOrdinal,
+              shouldRestartInfo.lastMetagraphSnapshotOrdinal,
             );
 
-            this.loggerService.info(
-              `Condition ${restartCondition.name} detected, triggering restart...`,
+            this.logger.warn(
+              `Restart condition triggered: ${restartCondition.name}`,
             );
 
             await restartCondition.triggerRestart();
@@ -112,23 +86,23 @@ export default class Monitor {
             return;
           }
         } catch (e) {
-          this.loggerService.warn(
-            `Could not get restart condition: ${restartCondition}, skipping`,
+          this.logger.warn(
+            `Failed to evaluate restart condition: ${restartCondition.name}, skipping`,
           );
           continue;
         }
       }
 
-      this.loggerService.info(`Checking conditions to informative alert`);
+      this.logger.info('Checking alert conditions');
       for (const alertCondition of this.alertConditions) {
         try {
           const shouldAlertInfo = await alertCondition.shouldAlert();
           if (shouldAlertInfo.shouldAlert) {
-            this.loggerService.info(
-              `Condition ${alertCondition.name} detected, triggering alert...`,
+            this.logger.warn(
+              `Alert condition triggered: ${alertCondition.name}`,
             );
 
-            await this.alertService.createInformativeAlert(
+            await alertService.createInformativeAlert(
               shouldAlertInfo.message || '',
               shouldAlertInfo.alertName,
               shouldAlertInfo.alertPriority,
@@ -136,31 +110,31 @@ export default class Monitor {
 
             return;
           } else {
-            this.loggerService.info(
+            this.logger.info(
               `Closing informative alert ${alertCondition.name}`,
             );
-            await await this.alertService.closeAlert(
+            await alertService.closeAlert(
               'Informative',
               shouldAlertInfo.alertName,
             );
           }
         } catch (e) {
-          this.loggerService.warn(
-            `Could not get alert condition: ${alertCondition}, skipping`,
+          this.logger.warn(
+            `Failed to evaluate alert condition: ${alertCondition.name}, skipping`,
           );
           continue;
         }
       }
 
-      this.loggerService.info(`Metagraph is healthy`);
+      this.logger.info('Metagraph is healthy');
       await this.closeRemoteAlerts();
       return;
     } catch (error: unknown) {
       if (error instanceof Error) {
-        this.loggerService.error(
+        this.logger.error(
           `Error when checking metagraph health: ${error.message}`,
         );
-        await this.alertService.createRestartFailed(error.message);
+        await alertService.createRestartFailed(error.message);
       }
     }
   }
@@ -168,10 +142,12 @@ export default class Monitor {
   async executeWithNotification(notificationMessage: string) {
     await this.execute();
     try {
-      this.loggerService.info('Notifying users');
-      this.notificationService.notifyUsers(notificationMessage);
+      this.logger.info('Notifying users');
+      this.monitoringConfiguration.notificationService.notifyUsers(
+        notificationMessage,
+      );
     } catch (e) {
-      this.loggerService.error(`Error when notifying users`);
+      this.logger.error(`Failed to notify users: ${e}`);
       throw e;
     }
   }

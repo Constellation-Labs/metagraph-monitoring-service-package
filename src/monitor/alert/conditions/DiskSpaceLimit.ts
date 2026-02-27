@@ -1,46 +1,32 @@
 import IAlertCondition, {
   ShouldAlertInfo,
 } from '@interfaces/alert-conditions/IAlertCondition';
-import IAlertService from '@interfaces/services/alert/IAlertService';
-import ILoggerService from '@interfaces/services/logger/ILoggerService';
-import ISshService from '@interfaces/services/ssh/ISshService';
-import { Config, MonitoringConfiguration } from 'src/MonitoringConfiguration';
+import { MonitoringConfiguration } from 'src/MonitoringConfiguration';
+
+import { Logger } from '../../../utils/logger';
 
 export default class freeDiskSpacePercentLimit implements IAlertCondition {
+  private monitoringConfiguration: MonitoringConfiguration;
+  private logger: Logger;
+
   name = 'freeDiskSpacePercentLimit';
-  config: Config;
-  sshServices: ISshService[];
-  loggerService: ILoggerService;
-  alertService: IAlertService;
   alertPriority: 'P1' | 'P2' | 'P3' | 'P4' | 'P5';
 
   constructor(monitoringConfiguration: MonitoringConfiguration) {
-    this.config = monitoringConfiguration.config;
-    this.sshServices = monitoringConfiguration.sshServices;
-    this.loggerService = monitoringConfiguration.loggerService;
-    this.alertService = monitoringConfiguration.alertService;
+    this.monitoringConfiguration = monitoringConfiguration;
+    this.logger = new Logger(
+      monitoringConfiguration.loggerService,
+      'DiskSpaceLimit',
+    );
     this.alertPriority = 'P3';
   }
 
-  private customLogger(
-    message: string,
-    level: 'Info' | 'Warn' | 'Error' = 'Info',
-  ) {
-    const logMethods: Record<'Info' | 'Warn' | 'Error', (msg: string) => void> =
-      {
-        Info: this.loggerService.info.bind(this.loggerService),
-        Warn: this.loggerService.warn.bind(this.loggerService),
-        Error: this.loggerService.error.bind(this.loggerService),
-      };
-
-    logMethods[level](`[freeDiskSpacePercentLimit] ${message}`);
-  }
-
   async shouldAlert(): Promise<ShouldAlertInfo> {
-    const minfreeDiskSpacePercentPercent = this.config.min_disk_space_percent;
+    const minfreeDiskSpacePercentPercent =
+      this.monitoringConfiguration.config.min_disk_space_percent;
     if (!minfreeDiskSpacePercentPercent) {
-      this.customLogger(
-        `Minimal disk space percent not filled in config, ignoring`,
+      this.logger.info(
+        'Disk space check skipped (min_disk_space_percent not configured)',
       );
       return {
         shouldAlert: false,
@@ -50,7 +36,7 @@ export default class freeDiskSpacePercentLimit implements IAlertCondition {
     }
     try {
       const instanceInformation = await Promise.all(
-        this.sshServices.map(async (sshService) => {
+        this.monitoringConfiguration.sshServices.map(async (sshService) => {
           const freeDiskSpacePercentResponse = await sshService.executeCommand(
             "df --output=used,size / | tail -n 1 | awk '{print 100 - ($1 / $2 * 100)}'",
           );
@@ -69,7 +55,7 @@ export default class freeDiskSpacePercentLimit implements IAlertCondition {
       );
 
       if (instancesWithLowfreeDiskSpacePercent.length === 0) {
-        this.customLogger('All instances with enough disk space');
+        this.logger.info('All nodes have sufficient disk space');
 
         return {
           shouldAlert: false,
@@ -85,9 +71,7 @@ export default class freeDiskSpacePercentLimit implements IAlertCondition {
         )
         .join('\n');
 
-      this.customLogger(
-        `Condition freeDiskSpacePercentLimit detected, message: ${message}`,
-      );
+      this.logger.warn(`Low disk space detected: ${message}`);
 
       return {
         shouldAlert: true,
@@ -96,7 +80,7 @@ export default class freeDiskSpacePercentLimit implements IAlertCondition {
         alertPriority: this.alertPriority,
       };
     } catch (e) {
-      this.customLogger(`Error when checking node disk space: ${e}`, 'Error');
+      this.logger.error(`Failed to check disk space: ${e}`);
       return {
         shouldAlert: false,
         alertName: this.name,

@@ -7,18 +7,18 @@ import { Config } from 'src/MonitoringConfiguration';
 
 import sleep from './sleep';
 
-export default async (
+export default async function waitForNode(
   config: Config,
   metagraphNode: MetagraphNode,
   layer: AvailableLayers,
   state: string,
   loggerService: ILoggerService,
-): Promise<boolean | undefined> => {
+): Promise<boolean | undefined> {
   const port = config.metagraph.layers[layer].ports.public;
   const LIMIT = 100;
   const url = `http://${metagraphNode.ip}:${port}/node/info`;
   loggerService.info(
-    `Checking if node ${metagraphNode.ip} on layer ${layer} is ${state}`,
+    `[${layer}] Waiting for node ${metagraphNode.ip} to reach ${state}`,
   );
 
   for (let idx = 0; idx < LIMIT; idx++) {
@@ -40,7 +40,7 @@ export default async (
       }
 
       loggerService.info(
-        `Node ${metagraphNode.ip} on layer ${layer} not ${state} yet, waiting 5s (${idx + 1}/${LIMIT})`,
+        `[${layer}] Node ${metagraphNode.ip} not ${state} yet (${idx + 1}/${LIMIT})`,
       );
       await sleep(5 * 1000);
     } catch (e) {
@@ -51,9 +51,9 @@ export default async (
       }
 
       loggerService.info(
-        `Node ${metagraphNode.ip} on layer ${layer} not ${state} yet, waiting 5s (${idx + 1}/${LIMIT})`,
+        `[${layer}] Node ${metagraphNode.ip} not ${state} yet (${idx + 1}/${LIMIT})`,
       );
       await sleep(5 * 1000);
     }
   }
-};
+}

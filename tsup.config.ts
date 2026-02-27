@@ -6,6 +6,7 @@ export default defineConfig({
     interfaces: 'interfaces.ts',
     services: 'services.ts',
     'default-restart-conditions': 'default-restart-conditions.ts',
+    'default-alert-conditions': 'default-alert-conditions.ts',
     'restart-groups': 'restart-groups.ts',
     shared: 'shared.ts',
   },

@@ -1,67 +1,51 @@
-import { utc } from 'moment';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+
+dayjs.extend(utc);
 
 import IRestartCondition, {
   ShouldRestartInfo,
 } from '@interfaces/restart-conditions/IRestartCondition';
-import IAllowanceListService from '@interfaces/services/allowance-list/IAllowanceListService';
-import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
-import ILoggerService from '@interfaces/services/logger/ILoggerService';
-import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
-import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
-import ISshService from '@interfaces/services/ssh/ISshService';
-import { Config, MonitoringConfiguration } from 'src/MonitoringConfiguration';
+import { MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
+import { Logger } from '../../../utils/logger';
 import { FullMetagraph } from '../groups/FullMetagraph';
 
 export default class SnapshotsStopped implements IRestartCondition {
   private monitoringConfiguration: MonitoringConfiguration;
+  private logger: Logger;
 
   name = 'Snapshots Stopped';
-  config: Config;
-  sshServices: ISshService[];
-  metagraphService: IMetagraphService;
-  globalNetworkService: IGlobalNetworkService;
-  seedlistService: ISeedlistService;
-  allowanceListService: IAllowanceListService;
-  loggerService: ILoggerService;
 
   private MAX_MINUTES_WITHOUT_NEW_SNAPSHOTS = 4;
 
   constructor(monitoringConfiguration: MonitoringConfiguration) {
     this.monitoringConfiguration = monitoringConfiguration;
-    this.config = monitoringConfiguration.config;
-    this.metagraphService = monitoringConfiguration.metagraphService;
-    this.sshServices = monitoringConfiguration.sshServices;
-    this.globalNetworkService = monitoringConfiguration.globalNetworkService;
-    this.seedlistService = monitoringConfiguration.seedlistService;
-    this.allowanceListService = monitoringConfiguration.allowanceListService;
-    this.loggerService = monitoringConfiguration.loggerService;
-  }
-
-  private async customLogger(message: string) {
-    this.loggerService.info(`[SnapshotsStopped] ${message}`);
+    this.logger = new Logger(
+      monitoringConfiguration.loggerService,
+      'SnapshotsStopped',
+    );
   }
 
   async shouldRestart(): Promise<ShouldRestartInfo> {
-    this.customLogger(`Checking if snapshots stopped to being produced`);
+    this.logger.info('Checking snapshot production');
     const { lastSnapshotTimestamp, lastSnapshotOrdinal } =
-      await this.metagraphService.metagraphSnapshotInfo;
+      await this.monitoringConfiguration.metagraphService.metagraphSnapshotInfo;
 
-    const lastSnapshotTimestampDiff = utc().diff(
-      lastSnapshotTimestamp,
-      'minutes',
-    );
+    const lastSnapshotTimestampDiff = dayjs
+      .utc()
+      .diff(lastSnapshotTimestamp, 'minutes');
 
     if (lastSnapshotTimestampDiff <= this.MAX_MINUTES_WITHOUT_NEW_SNAPSHOTS) {
-      this.customLogger(`Snapshots being produced normally`);
+      this.logger.info('Snapshots are being produced normally');
       return {
         shouldRestart: false,
         restartType: '',
       };
     }
 
-    this.customLogger(
-      `Last snapshot produced greater than ${this.MAX_MINUTES_WITHOUT_NEW_SNAPSHOTS} minutes ago, last ordinal in block explorer: ${lastSnapshotOrdinal}. Triggering a restart`,
+    this.logger.warn(
+      `Snapshots stalled: last produced ${lastSnapshotTimestampDiff}min ago (limit=${this.MAX_MINUTES_WITHOUT_NEW_SNAPSHOTS}min), ordinal=${lastSnapshotOrdinal}`,
     );
 
     return {
@@ -74,7 +58,7 @@ export default class SnapshotsStopped implements IRestartCondition {
   async triggerRestart(): Promise<void> {
     const fullMetagraph = new FullMetagraph(
       this.monitoringConfiguration,
-      this.globalNetworkService.referenceSourceNode,
+      this.monitoringConfiguration.globalNetworkService.referenceSourceNode,
     );
 
     await fullMetagraph.performRestart();

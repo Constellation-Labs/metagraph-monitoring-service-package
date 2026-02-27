@@ -61,7 +61,7 @@ export default class MonitoringApp {
           continue;
         } else {
           await monitor.instanceReboot.rebootInstance(instanceId);
-          await monitor.alertService.unhealthyCloudInstanceAlert(
+          await monitor.monitoringConfiguration.alertService.unhealthyCloudInstanceAlert(
             instanceId,
             'P1',
           );

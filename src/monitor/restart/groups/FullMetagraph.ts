@@ -1,12 +1,12 @@
 import axios from 'axios';
 
 import { NetworkNode } from '@interfaces/services/global-network/IGlobalNetworkService';
-import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 import { Layers } from '@shared/constants';
 import { Config, MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
+import { Logger } from '../../../utils/logger';
 import { CurrencyL1 } from '../layers/CurrencyL1';
 import { DataL1 } from '../layers/DataL1';
 import { MetagraphL0 } from '../layers/MetagraphL0';
@@ -25,7 +25,7 @@ export class FullMetagraph {
   private config: Config;
   private sshServices: ISshService[];
   private metagraphService: IMetagraphService;
-  private loggerService: ILoggerService;
+  private logger: Logger;
 
   referenceSourceNode: NetworkNode;
 
@@ -38,18 +38,17 @@ export class FullMetagraph {
     this.sshServices = monitoringConfiguration.sshServices;
     this.metagraphService = monitoringConfiguration.metagraphService;
     this.referenceSourceNode = referenceSourceNode;
-    this.loggerService = monitoringConfiguration.loggerService;
-  }
-
-  private customLogger(message: string) {
-    this.loggerService.info(`[FullMetagraph] ${message}`);
+    this.logger = new Logger(
+      monitoringConfiguration.loggerService,
+      'FullMetagraph',
+    );
   }
 
   private async killProcesses() {
     const promises = [];
     const killProcess = async (sshService: ISshService) => {
-      this.customLogger(
-        `Killing all layers current processes in node ${sshService.metagraphNode.ip}`,
+      this.logger.info(
+        `Killing all layer processes on ${sshService.metagraphNode.ip}`,
       );
 
       await killJavaJarByLayer(
@@ -74,8 +73,8 @@ export class FullMetagraph {
         );
       }
 
-      this.customLogger(
-        `Finished killing processes in node ${sshService.metagraphNode.ip}`,
+      this.logger.info(
+        `Killed all processes on ${sshService.metagraphNode.ip}`,
       );
     };
 
@@ -89,9 +88,7 @@ export class FullMetagraph {
   private async moveLogs() {
     const promises = [];
     const moveLogs = async (sshService: ISshService) => {
-      this.customLogger(
-        `Saving current logs of all layers in node ${sshService.metagraphNode.ip}`,
-      );
+      this.logger.info(`Saving logs on ${sshService.metagraphNode.ip}`);
 
       await saveCurrentLogs(sshService, Layers.ML0);
 
@@ -101,9 +98,7 @@ export class FullMetagraph {
       !this.config.metagraph.layers.dl1.ignore_layer &&
         (await saveCurrentLogs(sshService, Layers.DL1));
 
-      this.customLogger(
-        `Finished saving current logs in node ${sshService.metagraphNode.ip}`,
-      );
+      this.logger.info(`Saved logs on ${sshService.metagraphNode.ip}`);
     };
 
     for (const sshService of this.sshServices) {
@@ -133,9 +128,11 @@ export class FullMetagraph {
       throw new Error('Last metagraph snapshot hash/ordinal not found');
     }
 
-    this.customLogger(
-      `Last metagraph snapshot found in URL ${url}: ${lastSnapshotHash} - ${lastSnapshotOrdinal}`,
+    this.logger.info(
+      `Last snapshot: ordinal=${lastSnapshotOrdinal}, hash=${lastSnapshotHash}`,
     );
+
+    const nodesWithSnapshot: ISshService[] = [];
 
     for (const sshService of this.sshServices) {
       try {
@@ -146,21 +143,31 @@ export class FullMetagraph {
 
         await sshService.executeCommand(command, false);
 
-        this.customLogger(
-          `Node ${sshService.metagraphNode.ip} will be the rollback node`,
+        this.logger.info(
+          `Node ${sshService.metagraphNode.ip} contains the last snapshot`,
         );
-
-        return sshService;
+        nodesWithSnapshot.push(sshService);
       } catch {
-        this.customLogger(
-          `Snapshot not found on node: ${sshService.metagraphNode.ip}`,
+        this.logger.warn(
+          `Snapshot not found on node ${sshService.metagraphNode.ip}`,
         );
       }
     }
-    const rollbackNode = this.sshServices[0];
-    const message = `No node contains the last snapshot ${lastSnapshotHash}, defaulting to first: ${rollbackNode.metagraphNode.ip}`;
 
-    this.customLogger(message);
+    if (nodesWithSnapshot.length > 0) {
+      const selected =
+        nodesWithSnapshot[Math.floor(Math.random() * nodesWithSnapshot.length)];
+      this.logger.info(
+        `Randomly selected node ${selected.metagraphNode.ip} as rollback node from ${nodesWithSnapshot.length} node(s) with snapshot`,
+      );
+      return selected;
+    }
+
+    const rollbackNode =
+      this.sshServices[Math.floor(Math.random() * this.sshServices.length)];
+    this.logger.warn(
+      `No node contains snapshot ${lastSnapshotHash}, randomly selecting fallback: ${rollbackNode.metagraphNode.ip}`,
+    );
     return rollbackNode;
   }
 
@@ -173,7 +180,7 @@ export class FullMetagraph {
     const rollbackHost = await this.chooseRollbackNode();
     if (!rollbackHost) {
       throw Error(
-        `Could not get the rollback node from nodes: ${JSON.stringify(metagraphNodes)}`,
+        `Could not get rollback node from nodes: ${metagraphNodes.map((n) => n.ip).join(', ')}`,
       );
     }
 
@@ -181,11 +188,9 @@ export class FullMetagraph {
       (it) => it.nodeNumber !== rollbackHost.nodeNumber,
     );
 
-    this.customLogger(
-      `Rollback node: ${JSON.stringify(rollbackHost.metagraphNode)}`,
-    );
-    this.customLogger(
-      `Validator nodes: ${JSON.stringify(validatorHosts.map((it) => it.metagraphNode))}`,
+    this.logger.info(`Rollback node: ${rollbackHost.metagraphNode.ip}`);
+    this.logger.info(
+      `Validator nodes: ${validatorHosts.map((it) => it.metagraphNode.ip).join(', ')}`,
     );
 
     const metagraphL0 = new MetagraphL0(

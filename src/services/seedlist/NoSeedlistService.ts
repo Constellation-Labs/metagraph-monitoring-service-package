@@ -5,21 +5,21 @@ import ISeedlistService, {
 import { AvailableLayers } from '@shared/constants';
 import { MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
+import { Logger } from '../../utils/logger';
+
 export default class NoSeedlistService implements ISeedlistService {
   loggerService: ILoggerService;
+  private logger: Logger;
 
   constructor(monitoringConfiguration: MonitoringConfiguration) {
     this.loggerService = monitoringConfiguration.loggerService;
-  }
-
-  private async customLogger(message: string) {
-    this.loggerService.info(`[NoSeedlistService] ${message}`);
+    this.logger = new Logger(this.loggerService, 'NoSeedlist');
   }
 
   async buildSeedlistInformation(
     layer: AvailableLayers,
   ): Promise<SeedListInfo> {
-    this.customLogger(`No seedlist for layer ${layer}`);
+    this.logger.info(`No seedlist for layer ${layer}`);
     return {
       url: '',
       fileName: '',

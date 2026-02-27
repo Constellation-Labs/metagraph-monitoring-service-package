@@ -9,11 +9,14 @@ import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import { MetagraphNode } from '@interfaces/services/metagraph/IMetagraphService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 
+import { Logger } from '../../utils/logger';
+
 export default class Ssh2Service implements ISshService {
   connection: Client;
   nodeNumber: number;
   metagraphNode: MetagraphNode;
   loggerService: ILoggerService;
+  private logger: Logger;
   private ip: string;
   private username: string;
   private password?: string;
@@ -33,6 +36,7 @@ export default class Ssh2Service implements ISshService {
     this.username = metagraphNode.username;
     this.password = metagraphNode.password;
     this.loggerService = loggerService;
+    this.logger = new Logger(loggerService, 'SshService');
     const myFilePath = path.join(process.cwd(), metagraphNode.privateKeyPath);
     try {
       this.privateKey = fs.readFileSync(myFilePath);
@@ -48,23 +52,9 @@ export default class Ssh2Service implements ISshService {
     this.isConnected = false;
   }
 
-  private async customLogger(
-    message: string,
-    level: 'info' | 'error',
-  ): Promise<void> {
-    if (level === 'error') {
-      await this.loggerService.error(`[Ssh2Service] ${message}`);
-    } else {
-      await this.loggerService.info(`[Ssh2Service] ${message}`);
-    }
-  }
-
   public async setConnection(): Promise<void> {
     if (this.isConnected) {
-      await this.customLogger(
-        `[Node ${this.nodeNumber}] Already connected`,
-        'info',
-      );
+      this.logger.info(`[Node ${this.nodeNumber}] Already connected`);
       return;
     }
 
@@ -82,17 +72,13 @@ export default class Ssh2Service implements ISshService {
         .on('ready', () => {
           clearTimeout(timeout);
           this.isConnected = true;
-          this.customLogger(
-            `[Node ${this.nodeNumber}] Connected successfully`,
-            'info',
-          );
+          this.logger.info(`[Node ${this.nodeNumber}] Connected successfully`);
           resolve();
         })
         .on('error', (err) => {
           clearTimeout(timeout);
-          this.customLogger(
-            `[Node ${this.nodeNumber}] Error when connecting: ${err.message}`,
-            'error',
+          this.logger.error(
+            `[Node ${this.nodeNumber}] Connection failed: ${err.message}`,
           );
           reject(err);
         })
@@ -137,9 +123,8 @@ export default class Ssh2Service implements ISshService {
       this.connection.exec(commandParsed, (err, execStream) => {
         if (err) {
           clearTimeout(timeout);
-          this.customLogger(
-            `[Node ${this.nodeNumber}] Error when running command ${commandParsed}: ${err.message}`,
-            'error',
+          this.logger.error(
+            `[Node ${this.nodeNumber}] Command exec failed: ${err.message}`,
           );
           return reject(err);
         }
@@ -153,9 +138,8 @@ export default class Ssh2Service implements ISshService {
           .on('close', (code: number) => {
             clearTimeout(timeout);
             if (code !== 0 && !ignoreErrors) {
-              this.customLogger(
+              this.logger.error(
                 `[Node ${this.nodeNumber}] Command failed with code ${code}. Error: ${errorData}`,
-                'error',
               );
               return reject(
                 new Error(`Command failed with code ${code}: ${errorData}`),
@@ -171,9 +155,8 @@ export default class Ssh2Service implements ISshService {
           })
           .on('error', (err: Error) => {
             clearTimeout(timeout);
-            this.customLogger(
+            this.logger.error(
               `[Node ${this.nodeNumber}] Stream error for command ${commandParsed}: ${err.message}`,
-              'error',
             );
             reject(err);
           });
@@ -183,18 +166,14 @@ export default class Ssh2Service implements ISshService {
 
   public async destroyConnection(): Promise<void> {
     if (!this.isConnected) {
-      await this.customLogger(
+      this.logger.warn(
         `[Node ${this.nodeNumber}] No active connection to destroy`,
-        'info',
       );
       return;
     }
     this.connection.end();
     this.connection.destroy();
     this.isConnected = false;
-    await this.customLogger(
-      `[Node ${this.nodeNumber}] Connection destroyed`,
-      'info',
-    );
+    this.logger.info(`[Node ${this.nodeNumber}] Connection destroyed`);
   }
 }

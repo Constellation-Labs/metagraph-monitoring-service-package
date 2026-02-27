@@ -11,6 +11,8 @@ import ILoggerService from '@interfaces/services/logger/ILoggerService';
 import ISshService from '@interfaces/services/ssh/ISshService';
 import { Config, MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
+import { Logger } from '../../utils/logger';
+
 interface AWSCredentials {
   accessKeyId: string;
   secretAccessKey: string;
@@ -39,6 +41,7 @@ export default class AWSInstanceRebootService
   sshServices: ISshService[];
   globalNetworkService: IGlobalNetworkService;
   loggerService: ILoggerService;
+  private logger: Logger;
   lookbackOffset = 50;
 
   private ec2Client: EC2Client;
@@ -51,6 +54,7 @@ export default class AWSInstanceRebootService
     this.sshServices = monitoringConfiguration.sshServices;
     this.globalNetworkService = monitoringConfiguration.globalNetworkService;
     this.loggerService = monitoringConfiguration.loggerService;
+    this.logger = new Logger(this.loggerService, 'AWSInstanceReboot');
 
     const ec2Config: EC2ClientConfig = {
       credentials: {
@@ -61,10 +65,6 @@ export default class AWSInstanceRebootService
     };
 
     this.ec2Client = new EC2Client(ec2Config);
-  }
-
-  private async customLogger(message: string) {
-    this.loggerService.info(`[AWS Instance Reboot] ${message}`);
   }
 
   private async getInstanceState(
@@ -84,9 +84,8 @@ export default class AWSInstanceRebootService
 
       return undefined;
     } catch (error) {
-      this.loggerService.error(
-        `Failed to get instance state for ${instanceId}`,
-        error,
+      this.logger.error(
+        `Failed to get instance state for ${instanceId}: ${error}`,
       );
       throw error;
     }
@@ -94,9 +93,7 @@ export default class AWSInstanceRebootService
 
   async rebootInstance(instanceId: string): Promise<void> {
     try {
-      await this.customLogger(
-        `Checking current state of instance: ${instanceId}`,
-      );
+      this.logger.info(`Checking current state of instance: ${instanceId}`);
 
       const currentState = await this.getInstanceState(instanceId);
 
@@ -104,13 +101,11 @@ export default class AWSInstanceRebootService
         throw new Error(`Could not determine state of instance ${instanceId}`);
       }
 
-      await this.customLogger(
-        `Instance ${instanceId} current state: ${currentState}`,
-      );
+      this.logger.info(`Instance ${instanceId} current state: ${currentState}`);
 
       // Check if instance is already rebooting or in a transitional state
       if (currentState === 'rebooting') {
-        await this.customLogger(
+        this.logger.info(
           `Instance ${instanceId} is already rebooting. Skipping reboot request.`,
         );
         return;
@@ -126,7 +121,7 @@ export default class AWSInstanceRebootService
           'stopped',
         ].includes(currentState)
       ) {
-        await this.customLogger(
+        this.logger.info(
           `Instance ${instanceId} is in state '${currentState}'. Cannot reboot at this time.`,
         );
         throw new Error(
@@ -136,7 +131,7 @@ export default class AWSInstanceRebootService
 
       // Proceed with reboot if instance is in 'running' state
       if (currentState === 'running') {
-        await this.customLogger(`Attempting to reboot instance: ${instanceId}`);
+        this.logger.info(`Attempting to reboot instance: ${instanceId}`);
 
         const command = new RebootInstancesCommand({
           InstanceIds: [instanceId],
@@ -144,11 +139,11 @@ export default class AWSInstanceRebootService
 
         await this.ec2Client.send(command);
 
-        await this.customLogger(
+        this.logger.info(
           `Successfully initiated reboot for instance: ${instanceId}`,
         );
       } else {
-        await this.customLogger(
+        this.logger.info(
           `Instance ${instanceId} is in unexpected state '${currentState}'. Reboot may not behave as expected.`,
         );
         throw new Error(
@@ -156,10 +151,7 @@ export default class AWSInstanceRebootService
         );
       }
     } catch (error) {
-      this.loggerService.error(
-        `Failed to reboot instance ${instanceId}`,
-        error,
-      );
+      this.logger.error(`Failed to reboot instance ${instanceId}: ${error}`);
       throw error;
     }
   }

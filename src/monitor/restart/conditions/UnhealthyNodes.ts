@@ -3,31 +3,20 @@ import { createHash } from 'crypto';
 import IRestartCondition, {
   ShouldRestartInfo,
 } from '@interfaces/restart-conditions/IRestartCondition';
-import IAllowanceListService from '@interfaces/services/allowance-list/IAllowanceListService';
-import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
-import ILoggerService from '@interfaces/services/logger/ILoggerService';
-import IMetagraphService, {
-  MetagraphClusterInfo,
-} from '@interfaces/services/metagraph/IMetagraphService';
-import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
+import { MetagraphClusterInfo } from '@interfaces/services/metagraph/IMetagraphService';
 import ISshService from '@interfaces/services/ssh/ISshService';
-import { AvailableLayers, Layers } from '@shared/constants';
-import { Config, MonitoringConfiguration } from 'src/MonitoringConfiguration';
+import { Layers } from '@shared/constants';
+import { MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
+import { Logger } from '../../../utils/logger';
 import { FullLayer } from '../groups/FullLayer';
-import { IndividualNode } from '../groups/IndividualNode';
+import { restartLayerNodes } from '../utils/restart-layer-nodes';
 
 export default class UnhealthyNodes implements IRestartCondition {
   private monitoringConfiguration: MonitoringConfiguration;
+  private logger: Logger;
 
   name = 'Unhealthy Nodes';
-  config: Config;
-  sshServices: ISshService[];
-  metagraphService: IMetagraphService;
-  globalNetworkService: IGlobalNetworkService;
-  seedlistService: ISeedlistService;
-  allowanceListService: IAllowanceListService;
-  loggerService: ILoggerService;
 
   private layerRestarted: boolean = false;
 
@@ -37,27 +26,20 @@ export default class UnhealthyNodes implements IRestartCondition {
 
   constructor(monitoringConfiguration: MonitoringConfiguration) {
     this.monitoringConfiguration = monitoringConfiguration;
-    this.config = monitoringConfiguration.config;
-    this.sshServices = monitoringConfiguration.sshServices;
-    this.metagraphService = monitoringConfiguration.metagraphService;
-    this.globalNetworkService = monitoringConfiguration.globalNetworkService;
-    this.seedlistService = monitoringConfiguration.seedlistService;
-    this.allowanceListService = monitoringConfiguration.allowanceListService;
-    this.loggerService = monitoringConfiguration.loggerService;
-  }
-
-  private async customLogger(message: string) {
-    this.loggerService.info(`[UnhealthyNodes] ${message}`);
+    this.logger = new Logger(
+      monitoringConfiguration.loggerService,
+      'UnhealthyNodes',
+    );
   }
 
   private async tryRestartFullLayer() {
     if (
       this.metagraphL0UnhealthyNodes.length ===
-      this.config.metagraph.nodes.length
+      this.monitoringConfiguration.config.metagraph.nodes.length
     ) {
       await new FullLayer(
         this.monitoringConfiguration,
-        this.globalNetworkService.referenceSourceNode,
+        this.monitoringConfiguration.globalNetworkService.referenceSourceNode,
         Layers.ML0,
       ).performRestart();
 
@@ -65,22 +47,23 @@ export default class UnhealthyNodes implements IRestartCondition {
     }
     if (
       this.currencyL1UnhealthyNodes.length ===
-      this.config.metagraph.nodes.length
+      this.monitoringConfiguration.config.metagraph.nodes.length
     ) {
       await new FullLayer(
         this.monitoringConfiguration,
-        this.globalNetworkService.referenceSourceNode,
+        this.monitoringConfiguration.globalNetworkService.referenceSourceNode,
         Layers.CL1,
       ).performRestart();
 
       this.layerRestarted = true;
     }
     if (
-      this.dataL1NUnhealthyNodes.length === this.config.metagraph.nodes.length
+      this.dataL1NUnhealthyNodes.length ===
+      this.monitoringConfiguration.config.metagraph.nodes.length
     ) {
       await new FullLayer(
         this.monitoringConfiguration,
-        this.globalNetworkService.referenceSourceNode,
+        this.monitoringConfiguration.globalNetworkService.referenceSourceNode,
         Layers.DL1,
       ).performRestart();
 
@@ -88,49 +71,32 @@ export default class UnhealthyNodes implements IRestartCondition {
     }
   }
 
-  private async restartLayerNodes(
-    unhealthyNodes: ISshService[],
-    layer: AvailableLayers,
-  ): Promise<void> {
-    const unhealthyIps = unhealthyNodes.map((n) => n.metagraphNode.ip);
-
-    this.loggerService.info(`[${layer}] Trying to get metagraphReferenceNode`);
-    const referenceNode = this.sshServices
-      .map((s) => s.metagraphNode)
-      .find((n) => !unhealthyIps.includes(n.ip));
-
-    if (!referenceNode) {
-      throw new Error(
-        `[${layer}] No healthy reference node available for layer ${layer}`,
-      );
-    }
-
-    this.loggerService.info(`[${layer}] Starting individual nodes restart`);
-    for (const node of unhealthyNodes) {
-      this.loggerService.info(
-        `[${layer}] Triggering restart of node: ${node.metagraphNode.ip}, with reference node: ${referenceNode.ip}`,
-      );
-      await new IndividualNode(
-        this.monitoringConfiguration,
-        node,
-        referenceNode,
-        this.globalNetworkService.referenceSourceNode,
-        layer,
-      ).performRestart();
-    }
-  }
-
   private async tryRestartIndividualNodes() {
     if (this.metagraphL0UnhealthyNodes.length > 0) {
-      await this.restartLayerNodes(this.metagraphL0UnhealthyNodes, Layers.ML0);
+      await restartLayerNodes(
+        this.monitoringConfiguration,
+        this.metagraphL0UnhealthyNodes,
+        Layers.ML0,
+        this.logger,
+      );
     }
 
     if (this.currencyL1UnhealthyNodes.length > 0) {
-      await this.restartLayerNodes(this.currencyL1UnhealthyNodes, Layers.CL1);
+      await restartLayerNodes(
+        this.monitoringConfiguration,
+        this.currencyL1UnhealthyNodes,
+        Layers.CL1,
+        this.logger,
+      );
     }
 
     if (this.dataL1NUnhealthyNodes.length > 0) {
-      await this.restartLayerNodes(this.dataL1NUnhealthyNodes, Layers.DL1);
+      await restartLayerNodes(
+        this.monitoringConfiguration,
+        this.dataL1NUnhealthyNodes,
+        Layers.DL1,
+        this.logger,
+      );
     }
   }
 
@@ -138,26 +104,34 @@ export default class UnhealthyNodes implements IRestartCondition {
     const allCl1POV: Record<string, MetagraphClusterInfo[]> = {};
     const allDl1POV: Record<string, MetagraphClusterInfo[]> = {};
 
-    for (const sshService of this.sshServices) {
-      if (!this.config.metagraph.layers.cl1.ignore_layer) {
-        this.customLogger(
-          `Fetching CL1 nodes POV: ${sshService.metagraphNode.ip}`,
+    for (const sshService of this.monitoringConfiguration.sshServices) {
+      if (
+        !this.monitoringConfiguration.config.metagraph.layers.cl1.ignore_layer
+      ) {
+        this.logger.info(
+          `[CL1] Fetching cluster POV from ${sshService.metagraphNode.ip}`,
         );
-        const cl1POV = await this.metagraphService.getNodeClusterPOV(
-          sshService.metagraphNode.ip,
-          this.config.metagraph.layers.cl1.ports.public,
-        );
+        const cl1POV =
+          await this.monitoringConfiguration.metagraphService.getNodeClusterPOV(
+            sshService.metagraphNode.ip,
+            this.monitoringConfiguration.config.metagraph.layers.cl1.ports
+              .public,
+          );
         allCl1POV[sshService.metagraphNode.ip] = cl1POV;
       }
 
-      if (!this.config.metagraph.layers.dl1.ignore_layer) {
-        this.customLogger(
-          `Fetching DL1 nodes POV: ${sshService.metagraphNode.ip}`,
+      if (
+        !this.monitoringConfiguration.config.metagraph.layers.dl1.ignore_layer
+      ) {
+        this.logger.info(
+          `[DL1] Fetching cluster POV from ${sshService.metagraphNode.ip}`,
         );
-        const dl1POV = await this.metagraphService.getNodeClusterPOV(
-          sshService.metagraphNode.ip,
-          this.config.metagraph.layers.dl1.ports.public,
-        );
+        const dl1POV =
+          await this.monitoringConfiguration.metagraphService.getNodeClusterPOV(
+            sshService.metagraphNode.ip,
+            this.monitoringConfiguration.config.metagraph.layers.dl1.ports
+              .public,
+          );
         allDl1POV[sshService.metagraphNode.ip] = dl1POV;
       }
     }
@@ -193,8 +167,10 @@ export default class UnhealthyNodes implements IRestartCondition {
 
     const majorityHash = Object.entries(freq).sort((a, b) => b[1] - a[1])[0][0];
 
-    this.customLogger(`${layer} POV HASHES: ${JSON.stringify(povHashes)}`);
-    this.customLogger(`${layer} MAJORITY HASH: ${majorityHash}`);
+    this.logger.info(
+      `[${layer}] POV hashes: ${povHashes.map((p) => `${p.ip}=${p.hash.slice(0, 8)}`).join(', ')}`,
+    );
+    this.logger.info(`[${layer}] Majority hash: ${majorityHash.slice(0, 8)}`);
 
     const unhealthyNodes = povHashes
       .filter(({ hash }) => hash !== majorityHash)
@@ -204,7 +180,7 @@ export default class UnhealthyNodes implements IRestartCondition {
   }
 
   private async getNodesWithDifferentPOV() {
-    this.customLogger(`Fetching nodes POV`);
+    this.logger.info('Fetching cluster POV from all nodes');
     const { allCl1POV, allDl1POV } = await this.getNodesPOV();
     const unhealthyNodesPerLayer: Record<string, string[]> = {};
 
@@ -225,31 +201,35 @@ export default class UnhealthyNodes implements IRestartCondition {
   }
 
   async shouldRestart(): Promise<ShouldRestartInfo> {
-    this.customLogger(`Checking if we have unhealthy nodes`);
+    this.logger.info('Checking for unhealthy nodes');
     this.metagraphL0UnhealthyNodes = [];
     this.currencyL1UnhealthyNodes = [];
     this.dataL1NUnhealthyNodes = [];
     const nodesWithDifferentPOV = await this.getNodesWithDifferentPOV();
 
-    for (const sshService of this.sshServices) {
+    for (const sshService of this.monitoringConfiguration.sshServices) {
       const { metagraphNode } = sshService;
-      this.customLogger(`[ML0] Checking node ${metagraphNode.ip}`);
+      this.logger.info(`[ML0] Checking node ${metagraphNode.ip}`);
 
-      const ml0NodeIsHealthy = await this.metagraphService.checkIfNodeIsHealthy(
-        metagraphNode.ip,
-        this.config.metagraph.layers.ml0.ports.public,
-      );
+      const ml0NodeIsHealthy =
+        await this.monitoringConfiguration.metagraphService.checkIfNodeIsHealthy(
+          metagraphNode.ip,
+          this.monitoringConfiguration.config.metagraph.layers.ml0.ports.public,
+        );
 
       if (!ml0NodeIsHealthy) {
         this.metagraphL0UnhealthyNodes.push(sshService);
       }
 
-      if (!this.config.metagraph.layers.cl1.ignore_layer) {
-        this.customLogger(`[CL1] Checking node ${metagraphNode.ip}`);
+      if (
+        !this.monitoringConfiguration.config.metagraph.layers.cl1.ignore_layer
+      ) {
+        this.logger.info(`[CL1] Checking node ${metagraphNode.ip}`);
         const cl1NodeIsHealthy =
-          await this.metagraphService.checkIfNodeIsHealthy(
+          await this.monitoringConfiguration.metagraphService.checkIfNodeIsHealthy(
             metagraphNode.ip,
-            this.config.metagraph.layers.cl1.ports.public,
+            this.monitoringConfiguration.config.metagraph.layers.cl1.ports
+              .public,
           );
 
         const cl1NodesWithDifferentPOV =
@@ -262,12 +242,15 @@ export default class UnhealthyNodes implements IRestartCondition {
           this.currencyL1UnhealthyNodes.push(sshService);
         }
       }
-      if (!this.config.metagraph.layers.dl1.ignore_layer) {
-        this.customLogger(`[DL1] Checking node ${metagraphNode.ip}`);
+      if (
+        !this.monitoringConfiguration.config.metagraph.layers.dl1.ignore_layer
+      ) {
+        this.logger.info(`[DL1] Checking node ${metagraphNode.ip}`);
         const dl1NodeIsHealthy =
-          await this.metagraphService.checkIfNodeIsHealthy(
+          await this.monitoringConfiguration.metagraphService.checkIfNodeIsHealthy(
             metagraphNode.ip,
-            this.config.metagraph.layers.dl1!.ports!.public,
+            this.monitoringConfiguration.config.metagraph.layers.dl1!.ports!
+              .public,
           );
 
         const dl1NodesWithDifferentPOV =
@@ -287,18 +270,16 @@ export default class UnhealthyNodes implements IRestartCondition {
       this.currencyL1UnhealthyNodes.length > 0 ||
       this.dataL1NUnhealthyNodes.length > 0;
 
+    const totalNodes =
+      this.monitoringConfiguration.config.metagraph.nodes.length;
     const restartType =
-      this.metagraphL0UnhealthyNodes.length === 3
+      this.metagraphL0UnhealthyNodes.length === totalNodes
         ? 'Full Metagraph'
-        : this.currencyL1UnhealthyNodes.length === 3
+        : this.currencyL1UnhealthyNodes.length === totalNodes
           ? 'Full layer CL 1'
-          : this.dataL1NUnhealthyNodes.length === 3
+          : this.dataL1NUnhealthyNodes.length === totalNodes
             ? 'Full layer DL 1'
-            : `Individual nodes. Unhealthy nodes:
-               ML0: ${JSON.stringify(this.metagraphL0UnhealthyNodes.map((it) => it.metagraphNode.ip))}
-               CL1: ${JSON.stringify(this.currencyL1UnhealthyNodes.map((it) => it.metagraphNode.ip))}
-               DL1: ${JSON.stringify(this.dataL1NUnhealthyNodes.map((it) => it.metagraphNode.ip))}
-            `;
+            : `Individual nodes — ML0: [${this.metagraphL0UnhealthyNodes.map((it) => it.metagraphNode.ip).join(', ')}] CL1: [${this.currencyL1UnhealthyNodes.map((it) => it.metagraphNode.ip).join(', ')}] DL1: [${this.dataL1NUnhealthyNodes.map((it) => it.metagraphNode.ip).join(', ')}]`;
     return {
       shouldRestart,
       restartType,

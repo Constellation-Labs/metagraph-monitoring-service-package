@@ -5,6 +5,7 @@ import ISshService from '@interfaces/services/ssh/ISshService';
 import { AvailableLayers, Layers, NodeStatuses } from '@shared/constants';
 import { Config, MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
+import { Logger } from '../../../utils/logger';
 import { CurrencyL1 } from '../layers/CurrencyL1';
 import { DataL1 } from '../layers/DataL1';
 import { MetagraphL0 } from '../layers/MetagraphL0';
@@ -18,6 +19,7 @@ export class IndividualNode {
   private config: Config;
   private sshService: ISshService;
   private loggerService: ILoggerService;
+  private logger: Logger;
 
   referenceMetagraphNode: MetagraphNode;
   referenceSourceNode: NetworkNode;
@@ -34,18 +36,18 @@ export class IndividualNode {
     this.config = monitoringConfiguration.config;
     this.sshService = sshService;
     this.loggerService = monitoringConfiguration.loggerService;
+    this.logger = new Logger(
+      monitoringConfiguration.loggerService,
+      'IndividualNode',
+    );
     this.referenceMetagraphNode = referenceMetagraphNode;
     this.referenceSourceNode = referenceSourceNode;
     this.layer = layer;
   }
 
-  private customLogger(message: string) {
-    this.loggerService.info(`[IndividualNode] ${message}`);
-  }
-
   private async killProcess() {
-    this.customLogger(
-      `Killing ${this.layer} current processes in node ${this.sshService.metagraphNode.ip}`,
+    this.logger.info(
+      `[${this.layer}] Killing processes on ${this.sshService.metagraphNode.ip}`,
     );
 
     await killJavaJarByLayer(
@@ -54,20 +56,20 @@ export class IndividualNode {
       this.sshService.metagraphNode.ip,
     );
 
-    this.customLogger(
-      `Finished killing processes in node ${this.sshService.metagraphNode.ip}`,
+    this.logger.info(
+      `[${this.layer}] Killed processes on ${this.sshService.metagraphNode.ip}`,
     );
   }
 
   private async moveLog() {
-    this.customLogger(
-      `Saving current logs of ${this.layer} in node ${this.sshService.metagraphNode.ip}`,
+    this.logger.info(
+      `[${this.layer}] Saving logs on ${this.sshService.metagraphNode.ip}`,
     );
 
     await saveCurrentLogs(this.sshService, this.layer);
 
-    this.customLogger(
-      `Finished saving current logs in node ${this.sshService.metagraphNode.ip}`,
+    this.logger.info(
+      `[${this.layer}] Saved logs on ${this.sshService.metagraphNode.ip}`,
     );
   }
 

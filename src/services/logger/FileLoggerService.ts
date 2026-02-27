@@ -7,8 +7,19 @@ export default class FileLoggerService implements ILoggerService {
   private loggerService;
 
   constructor() {
+    const structuredFormat = format.combine(
+      format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
+      format.printf((info) => {
+        return JSON.stringify({
+          ts: info.timestamp,
+          level: info.level,
+          msg: info.message,
+        });
+      }),
+    );
+
     this.loggerService = createLogger({
-      format: format.combine(format.timestamp(), format.json()),
+      format: structuredFormat,
       transports: [
         new DailyRotateFile({
           filename: 'logs/application-%DATE%.log',
@@ -30,15 +41,15 @@ export default class FileLoggerService implements ILoggerService {
     });
   }
 
-  info(message: string, meta?: unknown): void {
-    this.loggerService.info(message, meta);
+  info(message: string): void {
+    this.loggerService.info(message);
   }
 
-  warn(message: string, meta?: unknown): void {
-    this.loggerService.warn(message, meta);
+  warn(message: string): void {
+    this.loggerService.warn(message);
   }
 
-  error(message: string, meta?: unknown): void {
-    this.loggerService.error(message, meta);
+  error(message: string): void {
+    this.loggerService.error(message);
   }
 }

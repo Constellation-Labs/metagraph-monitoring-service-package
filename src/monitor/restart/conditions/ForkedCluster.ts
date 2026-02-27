@@ -1,15 +1,10 @@
 import IRestartCondition, {
   ShouldRestartInfo,
 } from '@interfaces/restart-conditions/IRestartCondition';
-import IAllowanceListService from '@interfaces/services/allowance-list/IAllowanceListService';
-import IGlobalNetworkService from '@interfaces/services/global-network/IGlobalNetworkService';
-import ILoggerService from '@interfaces/services/logger/ILoggerService';
-import IMetagraphService from '@interfaces/services/metagraph/IMetagraphService';
-import ISeedlistService from '@interfaces/services/seedlist/ISeedlistService';
-import ISshService from '@interfaces/services/ssh/ISshService';
 import { Layers } from '@shared/constants';
-import { Config, MonitoringConfiguration } from 'src/MonitoringConfiguration';
+import { MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
+import { Logger } from '../../../utils/logger';
 import { FullLayer } from '../groups';
 
 /**
@@ -25,15 +20,9 @@ import { FullLayer } from '../groups';
  */
 export default class ForkedCluster implements IRestartCondition {
   private monitoringConfiguration: MonitoringConfiguration;
+  private logger: Logger;
 
   name = 'Forked Cluster';
-  config: Config;
-  sshServices: ISshService[];
-  metagraphService: IMetagraphService;
-  globalNetworkService: IGlobalNetworkService;
-  seedlistService: ISeedlistService;
-  allowanceListService: IAllowanceListService;
-  loggerService: ILoggerService;
 
   private shouldRestartML0: boolean = false;
   private shouldRestartCL1: boolean = false;
@@ -41,17 +30,10 @@ export default class ForkedCluster implements IRestartCondition {
 
   constructor(monitoringConfiguration: MonitoringConfiguration) {
     this.monitoringConfiguration = monitoringConfiguration;
-    this.config = monitoringConfiguration.config;
-    this.sshServices = monitoringConfiguration.sshServices;
-    this.metagraphService = monitoringConfiguration.metagraphService;
-    this.globalNetworkService = monitoringConfiguration.globalNetworkService;
-    this.seedlistService = monitoringConfiguration.seedlistService;
-    this.allowanceListService = monitoringConfiguration.allowanceListService;
-    this.loggerService = monitoringConfiguration.loggerService;
-  }
-
-  private customLogger(message: string) {
-    this.loggerService.info(`[ForkedCluster] ${message}`);
+    this.logger = new Logger(
+      monitoringConfiguration.loggerService,
+      'ForkedCluster',
+    );
   }
 
   private async checkLayerFork(
@@ -59,10 +41,11 @@ export default class ForkedCluster implements IRestartCondition {
     port: number,
     sourceNodeIps: string[],
   ): Promise<boolean> {
-    const clusterPOV = await this.metagraphService.getNodeClusterPOV(
-      nodeIp,
-      port,
-    );
+    const clusterPOV =
+      await this.monitoringConfiguration.metagraphService.getNodeClusterPOV(
+        nodeIp,
+        port,
+      );
     const clusterIps = clusterPOV.map((it) => it.ip);
     return !sourceNodeIps.every((item) => clusterIps.includes(item));
   }
@@ -71,7 +54,7 @@ export default class ForkedCluster implements IRestartCondition {
     if (this.shouldRestartML0) {
       await new FullLayer(
         this.monitoringConfiguration,
-        this.globalNetworkService.referenceSourceNode,
+        this.monitoringConfiguration.globalNetworkService.referenceSourceNode,
         Layers.ML0,
       ).performRestart();
       this.shouldRestartML0 = false;
@@ -79,7 +62,7 @@ export default class ForkedCluster implements IRestartCondition {
     if (this.shouldRestartCL1) {
       await new FullLayer(
         this.monitoringConfiguration,
-        this.globalNetworkService.referenceSourceNode,
+        this.monitoringConfiguration.globalNetworkService.referenceSourceNode,
         Layers.CL1,
       ).performRestart();
       this.shouldRestartCL1 = false;
@@ -87,7 +70,7 @@ export default class ForkedCluster implements IRestartCondition {
     if (this.shouldRestartDL1) {
       await new FullLayer(
         this.monitoringConfiguration,
-        this.globalNetworkService.referenceSourceNode,
+        this.monitoringConfiguration.globalNetworkService.referenceSourceNode,
         Layers.DL1,
       ).performRestart();
       this.shouldRestartDL1 = false; // Fixed: was incorrectly set to true
@@ -95,59 +78,64 @@ export default class ForkedCluster implements IRestartCondition {
   }
 
   async shouldRestart(): Promise<ShouldRestartInfo> {
-    this.customLogger('Checking if we have forked cluster');
-    const metagraphNodes = this.sshServices.map((it) => it.metagraphNode);
+    this.logger.info('Checking for forked clusters');
+    const metagraphNodes = this.monitoringConfiguration.sshServices.map(
+      (it) => it.metagraphNode,
+    );
     const sourceNodeIps = metagraphNodes.map((node) => node.ip);
 
     for (const node of metagraphNodes) {
-      this.customLogger(`NODE: ${node.ip} point of view`);
-      this.customLogger('Checking if the ML0 majority cluster is forked');
-      // Check ML0
+      this.logger.info(`Checking cluster POV from node ${node.ip}`);
+      this.logger.info('[ML0] Checking cluster fork status');
       if (
         await this.checkLayerFork(
           node.ip,
-          this.config.metagraph.layers.ml0.ports.public,
+          this.monitoringConfiguration.config.metagraph.layers.ml0.ports.public,
           sourceNodeIps,
         )
       ) {
-        this.customLogger('ML0 majority cluster FORKED, triggering restart');
+        this.logger.warn(`[ML0] Cluster forked from ${node.ip} POV`);
         this.shouldRestartML0 = true;
         return { shouldRestart: true, restartType: 'ML0 Cluster Forked' };
       }
-      this.customLogger('ML0 majority cluster NOT FORKED');
+      this.logger.info('[ML0] Cluster is consistent');
 
-      if (!this.config.metagraph.layers.cl1.ignore_layer) {
-        this.customLogger('Checking if the CL1 majority cluster is forked');
-        // Check CL1
+      if (
+        !this.monitoringConfiguration.config.metagraph.layers.cl1.ignore_layer
+      ) {
+        this.logger.info('[CL1] Checking cluster fork status');
         if (
           await this.checkLayerFork(
             node.ip,
-            this.config.metagraph.layers.cl1.ports.public,
+            this.monitoringConfiguration.config.metagraph.layers.cl1.ports
+              .public,
             sourceNodeIps,
           )
         ) {
-          this.customLogger('CL1 majority cluster FORKED, triggering restart');
+          this.logger.warn(`[CL1] Cluster forked from ${node.ip} POV`);
           this.shouldRestartCL1 = true;
           return { shouldRestart: true, restartType: 'CL1 Cluster Forked' };
         }
-        this.customLogger('CL1 majority cluster NOT FORKED');
+        this.logger.info('[CL1] Cluster is consistent');
       }
 
-      if (!this.config.metagraph.layers.dl1.ignore_layer) {
-        this.customLogger('Checking if the DL1 majority cluster is forked');
-        // Check DL1
+      if (
+        !this.monitoringConfiguration.config.metagraph.layers.dl1.ignore_layer
+      ) {
+        this.logger.info('[DL1] Checking cluster fork status');
         if (
           await this.checkLayerFork(
             node.ip,
-            this.config.metagraph.layers.dl1.ports.public,
+            this.monitoringConfiguration.config.metagraph.layers.dl1.ports
+              .public,
             sourceNodeIps,
           )
         ) {
-          this.customLogger('DL1 majority cluster FORKED, triggering restart');
+          this.logger.warn(`[DL1] Cluster forked from ${node.ip} POV`);
           this.shouldRestartDL1 = true;
           return { shouldRestart: true, restartType: 'DL1 Cluster Forked' };
         }
-        this.customLogger('DL1 majority cluster NOT FORKED');
+        this.logger.info('[DL1] Cluster is consistent');
       }
     }
 
@@ -155,7 +143,7 @@ export default class ForkedCluster implements IRestartCondition {
     this.shouldRestartCL1 = false;
     this.shouldRestartDL1 = false;
 
-    this.customLogger('None of the clusters are forked');
+    this.logger.info('All clusters are consistent');
     return { shouldRestart: false, restartType: '' };
   }
 
