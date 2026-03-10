@@ -183,25 +183,6 @@ CORS_ORIGIN=http://localhost:3000
 EOF
 }
 
-generate_metagraph_env_file() {
-  local opsgenie="${1:-}" discord="${2:-}"
-  local aws_key="${3:-}" aws_secret="${4:-}" aws_region="${5:-us-west-1}"
-
-  cat <<EOF
-# Metagraph-specific environment variables
-# Opsgenie (optional)
-OPSGENIE_API_KEY=$opsgenie
-
-# Discord (optional)
-DISCORD_WEBHOOK_URL=$discord
-
-# AWS (optional - for instance reboot)
-AWS_ACCESS_KEY_ID=$aws_key
-AWS_SECRET_ACCESS_KEY=$aws_secret
-AWS_REGION=$aws_region
-EOF
-}
-
 generate_docker_compose() {
   local metagraph_names=("$@")
 
@@ -244,9 +225,7 @@ HEADER
     build:
       context: .
       dockerfile: Dockerfile
-    env_file:
-      - ./envs/.env.shared
-      - ./envs/.env.${name}
+    env_file: ./envs/.env.shared
     environment:
       - NODE_ENV=production
       - API_PORT=3001
@@ -419,17 +398,7 @@ run_interactive() {
     fi
     dl1_ports="{\"public\":$dl1_pub,\"p2p\":$dl1_p2p,\"cli\":$dl1_cli}"
 
-    # Generate config file
-    mkdir -p "$PROJECT_DIR/config"
-    local config_content
-    config_content=$(generate_metagraph_config \
-      "$mg_name" "$mg_id" "$mg_network" "$nodes_json" "$network_nodes_json" \
-      "$ml0_ports" "$cl1_enabled" "$cl1_ports" "$dl1_enabled" "$dl1_ports")
-
-    echo "$config_content" | jq '.' > "$PROJECT_DIR/config/${mg_name}.config.json"
-    ok "Generated config/${mg_name}.config.json"
-
-    # Per-metagraph integrations
+    # Integrations
     echo -e "\n  ${CYAN}── Integrations for $mg_name ──${NC}"
     local mg_discord="" mg_opsgenie="" mg_aws_key="" mg_aws_secret="" mg_aws_region=""
     read -rp "  Discord webhook URL (press Enter to skip): " mg_discord
@@ -441,8 +410,25 @@ run_interactive() {
       mg_aws_region="${mg_aws_region:-us-west-1}"
     fi
 
-    generate_metagraph_env_file "$mg_opsgenie" "$mg_discord" "$mg_aws_key" "$mg_aws_secret" "$mg_aws_region" > "$PROJECT_DIR/envs/.env.${mg_name}"
-    ok "Generated envs/.env.${mg_name}"
+    # Generate config file (with integrations)
+    mkdir -p "$PROJECT_DIR/config"
+    local config_content
+    config_content=$(generate_metagraph_config \
+      "$mg_name" "$mg_id" "$mg_network" "$nodes_json" "$network_nodes_json" \
+      "$ml0_ports" "$cl1_enabled" "$cl1_ports" "$dl1_enabled" "$dl1_ports")
+
+    # Build integrations object and merge into config
+    local integrations='{}'
+    [ -n "$mg_opsgenie" ] && integrations=$(echo "$integrations" | jq --arg v "$mg_opsgenie" '.opsgenie_api_key = $v')
+    [ -n "$mg_discord" ] && integrations=$(echo "$integrations" | jq --arg v "$mg_discord" '.discord_webhook_url = $v')
+    if [ -n "$mg_aws_key" ]; then
+      integrations=$(echo "$integrations" | jq \
+        --arg key "$mg_aws_key" --arg secret "$mg_aws_secret" --arg region "${mg_aws_region:-us-west-1}" \
+        '.aws = {access_key_id: $key, secret_access_key: $secret, region: $region}')
+    fi
+
+    echo "$config_content" | jq --argjson integrations "$integrations" '. + {integrations: $integrations}' > "$PROJECT_DIR/config/${mg_name}.config.json"
+    ok "Generated config/${mg_name}.config.json"
 
     metagraph_names+=("$mg_name")
 
@@ -582,17 +568,14 @@ run_non_interactive() {
     dl1_enabled=$(jq -r "if .metagraphs[$i].layers.dl1.enabled == false then \"false\" else \"true\" end" "$config_file")
     dl1_ports=$(jq -c ".metagraphs[$i].layers.dl1.ports // {\"public\":9400,\"p2p\":9401,\"cli\":9402}" "$config_file")
 
-    # Generate config
+    # Generate config (with integrations)
     mkdir -p "$PROJECT_DIR/config"
     local config_content
     config_content=$(generate_metagraph_config \
       "$mg_name" "$mg_id" "$mg_network" "$nodes_json" "$network_nodes_json" \
       "$ml0_ports" "$cl1_enabled" "$cl1_ports" "$dl1_enabled" "$dl1_ports")
 
-    echo "$config_content" | jq '.' > "$PROJECT_DIR/config/${mg_name}.config.json"
-    ok "Generated config/${mg_name}.config.json"
-
-    # Per-metagraph env
+    # Build integrations from setup config
     local mg_opsgenie mg_discord mg_aws_key mg_aws_secret mg_aws_region
     mg_opsgenie=$(jq -r ".metagraphs[$i].opsgenie_api_key // \"\"" "$config_file")
     mg_discord=$(jq -r ".metagraphs[$i].discord_webhook_url // \"\"" "$config_file")
@@ -600,8 +583,17 @@ run_non_interactive() {
     mg_aws_secret=$(jq -r ".metagraphs[$i].aws_secret_access_key // \"\"" "$config_file")
     mg_aws_region=$(jq -r ".metagraphs[$i].aws_region // \"us-west-1\"" "$config_file")
 
-    generate_metagraph_env_file "$mg_opsgenie" "$mg_discord" "$mg_aws_key" "$mg_aws_secret" "$mg_aws_region" > "$PROJECT_DIR/envs/.env.${mg_name}"
-    ok "Generated envs/.env.${mg_name}"
+    local integrations='{}'
+    [ -n "$mg_opsgenie" ] && integrations=$(echo "$integrations" | jq --arg v "$mg_opsgenie" '.opsgenie_api_key = $v')
+    [ -n "$mg_discord" ] && integrations=$(echo "$integrations" | jq --arg v "$mg_discord" '.discord_webhook_url = $v')
+    if [ -n "$mg_aws_key" ]; then
+      integrations=$(echo "$integrations" | jq \
+        --arg key "$mg_aws_key" --arg secret "$mg_aws_secret" --arg region "${mg_aws_region:-us-west-1}" \
+        '.aws = {access_key_id: $key, secret_access_key: $secret, region: $region}')
+    fi
+
+    echo "$config_content" | jq --argjson integrations "$integrations" '. + {integrations: $integrations}' > "$PROJECT_DIR/config/${mg_name}.config.json"
+    ok "Generated config/${mg_name}.config.json"
 
     metagraph_names+=("$mg_name")
   done

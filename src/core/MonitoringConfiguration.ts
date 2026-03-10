@@ -63,6 +63,18 @@ type NetworkProps = {
   nodes: NetworkNode[];
 };
 
+// Integration credentials (optional, per-metagraph)
+type IntegrationsInput = {
+  opsgenie_api_key?: string;
+  discord_webhook_url?: string;
+  aws?: {
+    access_key_id: string;
+    secret_access_key: string;
+    region?: string;
+    session_token?: string;
+  };
+};
+
 // Config input type (what users provide in JSON - optional fields have defaults)
 type ConfigInput = {
   metagraph: {
@@ -82,6 +94,7 @@ type ConfigInput = {
   check_healthy_interval_in_minutes?: number;
   min_disk_space_percent?: number;
   min_owner_wallet_balance?: number;
+  integrations?: IntegrationsInput;
 };
 
 type ResolvedLayerProps = {
@@ -111,6 +124,7 @@ export type Config = {
   check_healthy_interval_in_minutes: number;
   min_disk_space_percent: number;
   min_owner_wallet_balance: number;
+  integrations: IntegrationsInput;
 };
 
 const DEFAULT_RESTART_CONDITIONS = [
@@ -154,6 +168,7 @@ function applyConfigDefaults(raw: ConfigInput): Config {
       raw.check_healthy_interval_in_minutes ?? 5,
     min_disk_space_percent: raw.min_disk_space_percent ?? 10,
     min_owner_wallet_balance: raw.min_owner_wallet_balance ?? 10,
+    integrations: raw.integrations ?? {},
   };
 }
 

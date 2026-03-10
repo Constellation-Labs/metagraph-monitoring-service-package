@@ -240,8 +240,32 @@ main() {
       }
     }')
 
+  # ── Step 5b: Integrations (prompted or empty in non-interactive) ────────
+
+  local mg_discord="" mg_opsgenie="" mg_aws_key="" mg_aws_secret="" mg_aws_region=""
+  if [ -z "$auth_arg" ]; then
+    echo -e "\n${CYAN}─── Integrations for $mg_name ───${NC}"
+    read -rp "  Discord webhook URL (press Enter to skip): " mg_discord
+    read -rp "  Opsgenie API key (press Enter to skip): " mg_opsgenie
+    read -rp "  AWS Access Key ID (press Enter to skip): " mg_aws_key
+    if [ -n "$mg_aws_key" ]; then
+      read -rp "  AWS Secret Access Key: " mg_aws_secret
+      read -rp "  AWS Region [us-west-1]: " mg_aws_region
+      mg_aws_region="${mg_aws_region:-us-west-1}"
+    fi
+  fi
+
+  local integrations='{}'
+  [ -n "$mg_opsgenie" ] && integrations=$(echo "$integrations" | jq --arg v "$mg_opsgenie" '.opsgenie_api_key = $v')
+  [ -n "$mg_discord" ] && integrations=$(echo "$integrations" | jq --arg v "$mg_discord" '.discord_webhook_url = $v')
+  if [ -n "$mg_aws_key" ]; then
+    integrations=$(echo "$integrations" | jq \
+      --arg key "$mg_aws_key" --arg secret "$mg_aws_secret" --arg region "${mg_aws_region:-us-west-1}" \
+      '.aws = {access_key_id: $key, secret_access_key: $secret, region: $region}')
+  fi
+
   mkdir -p "$PROJECT_DIR/config"
-  echo "$new_config" | jq '.' > "$PROJECT_DIR/config/${mg_slug}.config.json"
+  echo "$new_config" | jq --argjson integrations "$integrations" '. + {integrations: $integrations}' > "$PROJECT_DIR/config/${mg_slug}.config.json"
   ok "Generated config/${mg_slug}.config.json"
 
   # ── Step 6: Migrate custom restart conditions ────────────────────────────
@@ -315,41 +339,7 @@ EOF
     ok "Generated envs/.env.shared"
   fi
 
-  # ── Step 8: Per-metagraph env file ─────────────────────────────────────
-
-  if [ -f "$PROJECT_DIR/envs/.env.${mg_slug}" ]; then
-    ok "Preserving existing envs/.env.${mg_slug}"
-  else
-    local mg_discord="" mg_opsgenie="" mg_aws_key="" mg_aws_secret="" mg_aws_region=""
-    if [ -z "$auth_arg" ]; then
-      echo -e "\n${CYAN}─── Integrations for $mg_name ───${NC}"
-      read -rp "  Discord webhook URL (press Enter to skip): " mg_discord
-      read -rp "  Opsgenie API key (press Enter to skip): " mg_opsgenie
-      read -rp "  AWS Access Key ID (press Enter to skip): " mg_aws_key
-      if [ -n "$mg_aws_key" ]; then
-        read -rp "  AWS Secret Access Key: " mg_aws_secret
-        read -rp "  AWS Region [us-west-1]: " mg_aws_region
-        mg_aws_region="${mg_aws_region:-us-west-1}"
-      fi
-    fi
-
-    cat > "$PROJECT_DIR/envs/.env.${mg_slug}" <<EOF
-# Metagraph-specific environment variables
-# Opsgenie (optional)
-OPSGENIE_API_KEY=$mg_opsgenie
-
-# Discord (optional)
-DISCORD_WEBHOOK_URL=$mg_discord
-
-# AWS (optional - for instance reboot)
-AWS_ACCESS_KEY_ID=$mg_aws_key
-AWS_SECRET_ACCESS_KEY=$mg_aws_secret
-AWS_REGION=${mg_aws_region:-us-west-1}
-EOF
-    ok "Generated envs/.env.${mg_slug}"
-  fi
-
-  # ── Step 9: Generate docker-compose.yml ──────────────────────────────────
+  # ── Step 8: Generate docker-compose.yml ──────────────────────────────────
 
   # Collect ALL metagraph names
   local all_names=()
@@ -392,9 +382,7 @@ EOF
     build:
       context: .
       dockerfile: Dockerfile
-    env_file:
-      - ./envs/.env.shared
-      - ./envs/.env.${name}
+    env_file: ./envs/.env.shared
     environment:
       - NODE_ENV=production
       - API_PORT=3001
@@ -463,7 +451,6 @@ GWEOF
   echo "  Generated files:"
   echo "    config/${mg_slug}.config.json"
   echo "    envs/.env.shared"
-  echo "    envs/.env.${mg_slug}"
   echo "    docker-compose.yml"
   [ "$migrated_conditions" -gt 0 ] && echo "    custom-conditions/*.ts"
   echo ""

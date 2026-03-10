@@ -9,8 +9,6 @@ import {
   OnModuleDestroy,
   NotFoundException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-
 import MonitoringApp from '@core/index';
 import IRestartCondition from '@core/interfaces/restart-conditions/IRestartCondition';
 import { MonitoringBridge, MonitoringState } from '@core/MonitoringBridge';
@@ -38,7 +36,7 @@ export class MonitoringService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(MonitoringService.name);
   private readonly metagraphs = new Map<string, MetagraphInstance>();
 
-  constructor(private configService: ConfigService) {}
+  constructor() {}
 
   async onModuleInit() {
     try {
@@ -103,25 +101,22 @@ export class MonitoringService implements OnModuleInit, OnModuleDestroy {
       loggerService: loggerAdapter,
     });
 
-    // Configure optional services from env
-    const opsgenieKey = this.configService.get<string>('OPSGENIE_API_KEY');
-    if (opsgenieKey) {
+    // Configure optional services from config integrations
+    const integrations = config.integrations ?? {};
+
+    if (integrations.opsgenie_api_key) {
       app.configuration.alertService = new OpsgenieAlertService(
         app.configuration,
-        opsgenieKey,
+        integrations.opsgenie_api_key,
       );
     }
 
-    const awsKeyId = this.configService.get<string>('AWS_ACCESS_KEY_ID');
-    const awsSecret = this.configService.get<string>('AWS_SECRET_ACCESS_KEY');
-    const awsRegion = this.configService.get<string>('AWS_REGION');
-
-    if (awsKeyId && awsSecret && awsRegion) {
+    if (integrations.aws?.access_key_id && integrations.aws?.secret_access_key) {
       const awsCreds = {
-        accessKeyId: awsKeyId,
-        secretAccessKey: awsSecret,
-        region: awsRegion,
-        sessionToken: this.configService.get<string>('AWS_SESSION_TOKEN'),
+        accessKeyId: integrations.aws.access_key_id,
+        secretAccessKey: integrations.aws.secret_access_key,
+        region: integrations.aws.region ?? 'us-west-1',
+        sessionToken: integrations.aws.session_token,
       };
       app.configuration.instanceRebootService = new AWSInstanceRebootService(
         app.configuration,
@@ -129,13 +124,10 @@ export class MonitoringService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    const discordWebhook = this.configService.get<string>(
-      'DISCORD_WEBHOOK_URL',
-    );
-    if (discordWebhook) {
+    if (integrations.discord_webhook_url) {
       app.configuration.notificationService = new DiscordNotificationService(
         app.configuration,
-        discordWebhook,
+        integrations.discord_webhook_url,
       );
     }
 

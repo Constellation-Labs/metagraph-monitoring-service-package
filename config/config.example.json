@@ -36,5 +36,14 @@
         "id": "node-id"
       }
     ]
+  },
+  "integrations": {
+    "opsgenie_api_key": "",
+    "discord_webhook_url": "",
+    "aws": {
+      "access_key_id": "",
+      "secret_access_key": "",
+      "region": "us-west-1"
+    }
   }
 }
