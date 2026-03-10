@@ -1,0 +1,25 @@
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+COPY package.json yarn.lock* ./
+RUN yarn install --frozen-lockfile --ignore-engines 2>/dev/null || yarn install --ignore-engines
+
+COPY . .
+
+ENV NODE_ENV=production
+RUN npx next build src/ui
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY --from=builder /app/src/ui/.next/standalone ./
+COPY --from=builder /app/src/ui/.next/static ./src/ui/.next/static
+COPY --from=builder /app/src/ui/public ./src/ui/public 2>/dev/null || true
+
+ENV NODE_ENV=production
+
+EXPOSE 3000
+
+CMD ["node", "src/ui/server.js"]

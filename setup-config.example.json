@@ -1,0 +1,52 @@
+{
+  "auth": {
+    "username": "admin",
+    "password": "your-secure-password"
+  },
+  "discord_webhook_url": "",
+  "opsgenie_api_key": "",
+  "metagraphs": [
+    {
+      "name": "my-metagraph",
+      "id": "DAG4dWrdALPQmvF5UBpuXrqdkMHea1H5f7rjb4qZ",
+      "network": "mainnet",
+      "nodes": [
+        {
+          "ip": "10.0.0.1",
+          "username": "ubuntu",
+          "ssh_key_path": "~/.ssh/id_rsa",
+          "key_file": {
+            "name": "my-key.p12",
+            "alias": "my-alias",
+            "password": "my-password"
+          }
+        },
+        {
+          "ip": "10.0.0.2",
+          "username": "ubuntu",
+          "ssh_key_path": "~/.ssh/id_rsa",
+          "key_file": {
+            "name": "my-key.p12",
+            "alias": "my-alias",
+            "password": "my-password"
+          }
+        },
+        {
+          "ip": "10.0.0.3",
+          "username": "ubuntu",
+          "ssh_key_path": "~/.ssh/other_key",
+          "key_file": {
+            "name": "my-key.p12",
+            "alias": "my-alias",
+            "password": "my-password"
+          }
+        }
+      ],
+      "layers": {
+        "ml0": { "ports": { "public": 9200, "p2p": 9201, "cli": 9202 } },
+        "cl1": { "enabled": true, "ports": { "public": 9300, "p2p": 9301, "cli": 9302 } },
+        "dl1": { "enabled": false }
+      }
+    }
+  ]
+}

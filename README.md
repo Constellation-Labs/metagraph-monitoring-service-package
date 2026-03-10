@@ -1,168 +1,269 @@
+# Metagraph Monitoring Service
 
-# Metagraph Monitoring Service Package
-This repository hosts the Metagraph Monitoring Service package. This package is responsible for monitoring your metagraph and performing restarts as needed. More details are provided in the sections below.
+Monitors your Constellation Network metagraph and automatically restarts nodes when issues are detected. Includes a web dashboard for real-time status, logs, and manual controls.
 
-## Dependencies
+## Prerequisites
 
-### NodeJS
-* You should have NodeJS > 18 installed
-* Check the [installation guide](https://nodejs.org/en/download/package-manager)
+- **Docker** and **Docker Compose** (installed automatically by the deploy script, or manually)
+- **SSH access** to your metagraph nodes (key-based authentication)
+- **Password-less sudo** on both the monitoring instance and metagraph nodes ([guide](https://gcore.com/learning/how-to-disable-password-for-sudo-command/))
+- `curl` and `jq` (for setup scripts)
 
-### Yarn
-* You should have yarn installed
-* Check the [installation guide](https://classic.yarnpkg.com/lang/en/docs/install)
+## Quick Start
 
-### User with Password-less Sudo Privileges
-* This application will need to perform several operations, such as creating/writing files and terminating processes. To ensure everything functions correctly, the specified user on the monitoring instance and the nodes must have password-less sudo privileges.
-* The SSH Key needs to have access to the node
-* Refer to  [this document](https://gcore.com/learning/how-to-disable-password-for-sudo-command/) to learn how to enable password-less sudo for a user. 
+```bash
+git clone https://github.com/Constellation-Labs/metagraph-monitoring-service.git
+cd metagraph-monitoring-service
 
-## Installation
+# Interactive setup wizard
+./scripts/setup.sh
 
-After cloning the repository, ensure you fetch all the dependencies. Please make sure you are using Node.js version 18 or higher. To install the dependencies, simply run the following command:
+# Deploy (installs Docker if needed, builds, and starts)
+./scripts/deploy.sh --start
+```
 
-`yarn` or `npm install`
+The setup wizard will ask for:
+- Dashboard credentials (username/password)
+- Metagraph details (name, ID, network)
+- Node IPs, SSH keys, and P12 key file info
+- Layer configuration (ML0, CL1, DL1)
+- Optional integrations (Discord, Opsgenie)
 
-This will download all the necessary dependencies and populate the `node_modules` folder.
+After setup, access the dashboard at **http://localhost:3000**.
+
+## Setup Options
+
+### Interactive wizard (recommended for first-time setup)
+
+```bash
+./scripts/setup.sh
+```
+
+Walks you through all configuration step by step.
+
+### Non-interactive mode (for CI/CD and automation)
+
+```bash
+# Copy and fill in the template
+cp setup-config.example.json setup-config.json
+
+# Generate config files only
+./scripts/setup.sh --config setup-config.json
+
+# Generate config files and start containers
+./scripts/setup.sh --config setup-config.json --start
+```
+
+See `setup-config.example.json` for the full schema.
+
+### Migration from old metagraph-monitoring-service
+
+If you have an existing `metagraph-monitoring-service` repository:
+
+```bash
+./scripts/migrate.sh /path/to/old-metagraph-monitoring-service
+```
+
+This will:
+- Read your existing `config/config.json`
+- Copy SSH keys and custom restart conditions
+- Rewrite imports for compatibility
+- Generate all new config files
+
+You can also pass credentials non-interactively:
+
+```bash
+./scripts/migrate.sh /path/to/old-repo --auth admin:password123
+```
+
+### Migrating multiple metagraphs
+
+Run `migrate.sh` once per old repo. Each run preserves previously migrated metagraphs:
+
+```bash
+./scripts/migrate.sh /path/to/metagraph-a --auth admin:pass
+./scripts/migrate.sh /path/to/metagraph-b --auth admin:pass
+```
+
+The `.env` and `docker-compose.yml` are preserved/regenerated to include all metagraphs.
+
+## Deployment
+
+### Local
+
+```bash
+# Full deploy: install Docker + build + start
+./scripts/deploy.sh
+
+# Only install Docker
+./scripts/deploy.sh --install
+
+# Only build and start containers (Docker already installed)
+./scripts/deploy.sh --start
+```
+
+### Remote (via SSH)
+
+Deploy to a remote server using rsync + SSH:
+
+```bash
+# Full deploy on remote host
+./scripts/deploy.sh --remote ubuntu@10.0.0.50
+
+# Build + start only (Docker already installed on remote)
+./scripts/deploy.sh --remote ubuntu@10.0.0.50 --start
+
+# Custom SSH key
+./scripts/deploy.sh --remote ubuntu@10.0.0.50 --key ~/.ssh/my_key --start
+```
+
+This transfers the project files via rsync and runs the deploy script on the remote host.
+
+### Docker commands
+
+```bash
+docker compose up -d       # Start
+docker compose down        # Stop
+docker compose logs -f     # Follow logs
+docker compose restart     # Restart
+```
+
+## Architecture
+
+Each metagraph runs in its own Docker container. A gateway aggregates all metagraph APIs, and the UI runs in a separate container.
+
+```
+              ┌──────────────────────┐
+              │     UI (Next.js)     │
+              │      :3000           │
+              └──────────┬───────────┘
+                         │
+              ┌──────────▼───────────┐
+              │      Gateway         │
+              │      :3001           │
+              └──────┬─────────┬─────┘
+                     │         │
+        ┌────────────┘         └────────────┐
+        ▼                                   ▼
+┌──────────────────────┐     ┌──────────────────────┐
+│  monitor-metagraph-a │     │  monitor-metagraph-b │
+│  (NestJS API :3001)  │     │  (NestJS API :3001)  │
+│  Monitors + restarts │     │  Monitors + restarts │
+└──────────────────────┘     └──────────────────────┘
+```
 
 ## Configuration
-To run this service, you must provide the necessary configuration in the file: `config/config.json`. This file contains the following fields:
 
-*   **`metagraph.id`**: The unique identifier for your metagraph.
-*   **`metagraph.name`**: The name of your metagraph.
-*   **`metagraph.version`**: The version of your metagraph.
-*   **`metagraph.default_restart_conditions`**: Specifies the conditions under which your metagraph should restart. These conditions are located in the directory: `src/monitor/restart/conditions`. 
-    *   By default, there are two conditions:
-        *   `SnapshotStopped`: Triggers if your metagraph stops producing snapshots.
-        *   `UnhealthyNodes`: Triggers if your metagraph nodes become unhealthy.
-*   **`metagraph.default_alert_conditions`**: Specifies when your metagraph should trigger alerts. These conditions are defined in the directory: `src/monitor/alerts/conditions`. 
-    *   By default, there are two conditions:
-        *   `DiskSpaceLimit`: Alerts when the available disk space drops below the threshold set by `min_disk_space_percent`.
-        *   `OwnerWalletOutOfFunds`: Alerts when the metagraph owner’s wallet balance falls below the value defined by `min_owner_wallet_balance`.
-*   **`metagraph.layers`**: Details about your metagraph layers. Options include:
-    *   **`ignore_layer`**: Set to `true` to disable a layer such as `currency-l1` or `data-l1`.
-    *   **`ports`**: Lists public, p2p, and cli ports.
-    *   **`additional_env_variables`**: Additional environment variables needed upon restart. Format: `["TEST=MY_VARIABLE, TEST_2=MY_VARIABLE_2"]`.
-    *   **`seedlist`**: Information about the layer seedlist. Example: `{ base_url: ":your_url", file_name: ":your_file_name"}`.
-*   **`metagraph.nodes`**: Configuration for your metagraph nodes:  
-    *   **`ip`**: IP address of the node.
-    *   **`username`**: Username for SSH access to the node.
-    *   **`privateKeyPath`**: Path to the private key for SSH, relative to the service's root directory. Example: `config/your_key_file.pem`.
-    *   **`key_file`**: Details of your `.p12` key file used for node startup, including `name`, `alias`, and `password`.
-*   **`network.name`**: The network your metagraph is part of, such as `integrationnet` or `mainnet`.  
-*   **`network.nodes`**: Information about the GL0s nodes.  
-*   **`check_healthy_interval_in_minutes`**: The interval, in minutes, at which the health check should run.
-*   **`min_disk_space_percent`**: The minimum disk space percentage required for the node to avoid triggering disk space alerts.
-*   **`min_owner_wallet_balance`**: The minimum wallet balance for the metagraph owner to avoid triggering low balance alerts.
+### Config file
 
-## Interfaces
+Each metagraph has a config file at `config/<name>.config.json`. Only essential fields are required -- everything else has sensible defaults:
 
-We offer a suite of interfaces that allow you to customize the restart flow for your metagraph. These interfaces are located in `src/interfaces`. Below is an overview of the available interfaces and their default implementations:
+**Required fields:**
 
-*  **`IRestartCondition`**: Use this interface to add new restart conditions to your metagraph. We currently implement this interface with two conditions:
-    *   **`SnapshotStopped`**: Activates if your metagraph stops producing snapshots.
-    *   **`UnhealthyNodes`**: Activates if your metagraph nodes become unhealthy. 
+| Field | Description |
+|-------|-------------|
+| `metagraph.id` | Metagraph DAG address |
+| `metagraph.name` | Display name |
+| `metagraph.layers` | ML0, CL1, DL1 layer ports. Set `ignore_layer: true` to disable a layer |
+| `metagraph.nodes` | Node IPs, SSH usernames, key paths, P12 key files |
+| `network.name` | `mainnet`, `integrationnet`, or `testnet` |
+| `network.nodes` | Global L0 reference nodes (fetched automatically by setup) |
 
-*  **`IAlertCondition`**: Use this interface to add new alert conditions to your metagraph. We currently implement this interface with two conditions:
-    *   `DiskSpaceLimit`: Activates when the available disk space drops below the threshold set by `min_disk_space_percent`.
-    *   `OwnerWalletOutOfFunds`: Activates when the metagraph owner’s wallet balance falls below the value defined by `min_owner_wallet_balance`.
+**Optional fields (with defaults):**
 
-*  **`IAlertService`**: This interface allows the addition of new alert services to your restart mechanism. By default, we offer two options:
-    *   **`NoAlertsService`**: Use this if no external alert system is required.
-    *   **`OpsgenieAlertService`**: An example service for alerting via Opsgenie.
+| Field | Default |
+|-------|---------|
+| `metagraph.version` | `"1.0.0"` |
+| `metagraph.default_restart_conditions` | All 4 conditions enabled |
+| `metagraph.default_alert_conditions` | All 2 conditions enabled |
+| `check_healthy_interval_in_minutes` | `5` |
+| `min_disk_space_percent` | `10` |
+| `min_owner_wallet_balance` | `10` |
 
-*  **`INotificationService`**: This interface allows the addition of new notification services to your monitoring. By default, we offer two options:
-    *   **`NoNotificationService`**: Use this if no external notification system is required.
-    *   **`DiscordNotificationService`**: An example service for notify via Discord.
-     
-*  **`IGlobalNetworkService`**: Interface for requesting data from the global network. The default implementation is `ConstellationGlobalNetworkService`.
-    
-*   **`IMetagraphService`**: Interface for requesting data from the metagraph. The default implementation is `ConstellationMetagraphService`.
-    
-*  **`ILoggerService`**: Select your logging system through this interface. We provide two default options:
-    *   **`ConsoleLoggerService`**: Outputs logs directly to the console.
-    *   **`FileLoggerService`**: Stores logs in files located in the `logs` directory, with logs rotating daily or every 20MB.
-     
-*   **`ISeedlist`**: Choose your seedlist provider with this interface. We offer two default options:
-    *   **`NoSeedlistService`**: For scenarios where no seedlist is used.
-    *   **`GithubSeedlistService`**: Retrieves seedlist information from a GitHub release.
+### Default restart conditions
 
-*   **`ISshService`**: This interface is for choosing your SSH communication tool with the nodes. The default implementation uses the `ssh2` library in NodeJS, available in `Ssh2Service`.
+- **SnapshotsStopped** - Metagraph stopped producing snapshots
+- **UnhealthyNodes** - Nodes are in an unhealthy state
+- **L0ForkedNodes** - L0 nodes have forked from the network
+- **ForkedCluster** - The cluster has forked
 
+### Default alert conditions
 
-## Customizing Services
+- **DiskSpaceLimit** - Disk space below threshold
+- **OwnerWalletOutOfFunds** - Owner wallet balance below threshold
 
-You can customize services further by implementing several interfaces such as `IAlertService`, `ILoggerService`, `IGlobalNetworkService`, `IMetagraphService`, `ISeedlistService`, `IAllowanceListService`, `INotificationService`, and `ISshService`. All these interfaces are available in the following import statement:
+### Environment variables
 
-```
-import {
-  IAlertService,
-  ILoggerService,
-  IGlobalNetworkService,
-  IMetagraphService,
-  ISeedlistService,
-  IAllowanceListService,
-  ISshService,
-  INotificationService
-} from '@interfaces';
-``` 
+The `.env` file (generated by setup) contains:
 
-Once you implement your services, provide them to the constructor as shown below:
-```
-import MonitoringApp from 'src';
-import { ILoggerService } from '@interfaces';
+| Variable | Description |
+|----------|-------------|
+| `AUTH_USERNAME` | Dashboard login username |
+| `AUTH_PASSWORD` | Dashboard login password |
+| `JWT_SECRET` | Auto-generated JWT signing key |
+| `API_PORT` | API port (default: 3001) |
+| `CORS_ORIGIN` | CORS origin (default: http://localhost:3000) |
+| `DISCORD_WEBHOOK_URL` | Discord webhook for notifications (optional) |
+| `OPSGENIE_API_KEY` | Opsgenie API key for alerts (optional) |
 
-class MyCustomLoggerService implements ILoggerService {
-  constructor() {}
+## Custom Restart Conditions
 
-  info(message: string, meta?: unknown): void {
-    console.log(message, meta);
+Add custom restart logic by placing `.ts` files in the `custom-conditions/` directory. Each file should export a default class implementing `IRestartCondition`:
+
+```typescript
+import { MonitoringConfiguration } from '@core/MonitoringConfiguration';
+import { IRestartCondition, ShouldRestartInfo } from '@core/interfaces';
+import { FullMetagraph } from '@core/monitor/restart/groups';
+
+export default class MyCondition implements IRestartCondition {
+  name = 'MyCondition';
+
+  constructor(private config: MonitoringConfiguration) {}
+
+  async shouldRestart(): Promise<ShouldRestartInfo> {
+    // Your logic here
+    return { shouldRestart: false, restartType: '' };
   }
 
-  warn(message: string, meta?: unknown): void {
-    console.log(message, meta);
-  }
-
-  error(message: string, meta?: unknown): void {
-    console.error(message, meta);
+  async triggerRestart(): Promise<void> {
+    const restart = new FullMetagraph(this.config);
+    await restart.performRestart();
   }
 }
-
-const myCustomLogger = new MyCustomLoggerService();
-const monitoring = new MonitoringApp(
-  ...,
-  ...,
-  ...,
-  {
-    logger: myCustomLogger,
-  },
-);
 ```
 
-## Customizing Restart Conditions
+See `custom-conditions/README.md` for available path aliases and the full interface definition.
 
-You can also customize your restart conditions. Import and implement a custom restart interface as follows:
-```
-import { IRestartCondition } from '@interfaces';
+## Multiple Metagraphs
 
-class MyCustomRestartCondition implements IRestartCondition {
-  name: string;
-  config: MonitoringConfigs;
-  sshServices: ISshService[];
-  metagraphService: IMetagraphService;
-  globalNetworkService: IGlobalNetworkService;
-  seedlistService: ISeedlistService;
-  allowanceListService: IAllowanceListService;
-  logger: ILoggerService;
-  shouldRestart(): Promise<ShouldRestartInfo>;
-  triggerRestart(): Promise<void>;
-}
-const myCustomRestartCondition = new MyCustomRestartCondition();
-const monitoring = new MonitoringApp(
-  ...,
-  ...,
-  ...,
-  ...,
-  [myCustomRestartCondition],
-);
+Run the setup wizard multiple times or include multiple entries in `setup-config.json`. Each metagraph gets its own container and config file. The `docker-compose.yml` is regenerated to include all configured metagraphs.
+
+## File Structure
+
 ```
+.
+├── config/                    # Metagraph config files (generated)
+│   └── <name>.config.json
+├── custom-conditions/         # Custom restart condition plugins
+├── logs/                      # Log files per metagraph
+├── scripts/
+│   ├── setup.sh               # Interactive/non-interactive setup
+│   ├── migrate.sh             # Migration from old repo
+│   └── deploy.sh              # Docker deployment helper
+├── src/
+│   ├── core/                  # Monitoring engine
+│   ├── server/                # NestJS API server
+│   ├── gateway/               # API gateway
+│   ├── shared/                # Shared types and DTOs
+│   └── ui/                    # Next.js dashboard
+├── docker-compose.yml         # Generated by setup/migrate
+├── Dockerfile                 # Monitoring container
+├── Dockerfile.gateway         # Gateway container
+├── Dockerfile.ui              # Dashboard UI container
+├── setup-config.example.json  # Template for non-interactive setup
+└── .env                       # Generated credentials
+```
+
+## License
+
+MIT

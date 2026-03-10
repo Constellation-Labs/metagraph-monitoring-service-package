@@ -1,0 +1,17 @@
+import { Config } from '@core/MonitoringConfiguration';
+import ILoggerService from '@interfaces/services/logger/ILoggerService';
+import ISshService from '@interfaces/services/ssh/ISshService';
+
+export type ShouldRebootInfo = {
+  shouldRestart: boolean;
+  restartType?: string;
+};
+
+export default interface IInstanceRebootService {
+  name: string;
+  config: Config;
+  sshServices: ISshService[];
+  loggerService: ILoggerService;
+
+  rebootInstance(instanceId: string): Promise<void>;
+}

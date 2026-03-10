@@ -1,6 +1,13 @@
 node_modules/
+dist/
 logs/
+config/*.config.json
 config/*.pem
 output.log
 pidfile.txt
 .DS_Store
+.env
+.ssh-key-map
+ssh-keys/
+docker-compose.yml
+.next/

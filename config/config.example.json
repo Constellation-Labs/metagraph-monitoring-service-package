@@ -1,0 +1,40 @@
+{
+  "metagraph": {
+    "id": "your-metagraph-id",
+    "name": "Your Metagraph",
+    "layers": {
+      "ml0": {
+        "ports": { "public": 9200, "p2p": 9201, "cli": 9202 }
+      },
+      "cl1": {
+        "ports": { "public": 9300, "p2p": 9301, "cli": 9302 }
+      },
+      "dl1": {
+        "ignore_layer": true,
+        "ports": { "public": 9400, "p2p": 9401, "cli": 9402 }
+      }
+    },
+    "nodes": [
+      {
+        "ip": "10.0.0.1",
+        "username": "ubuntu",
+        "privateKeyPath": "/root/.ssh/id_rsa",
+        "key_file": {
+          "name": "your-key.p12",
+          "alias": "your-alias",
+          "password": "your-password"
+        }
+      }
+    ]
+  },
+  "network": {
+    "name": "mainnet",
+    "nodes": [
+      {
+        "ip": "13.52.246.74",
+        "port": 9000,
+        "id": "node-id"
+      }
+    ]
+  }
+}

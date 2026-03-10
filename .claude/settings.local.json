@@ -6,7 +6,30 @@
       "Bash(npm install:*)",
       "Bash(grep:*)",
       "Bash(npx tsc:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(npx tsup)",
+      "Bash(find src/core -name '*.ts' -exec perl -pi -e \"s|from ''src/MonitoringConfiguration''|from ''\\\\@core/MonitoringConfiguration''|g\" {} +)",
+      "Bash(yarn add @nestjs/common@^11.1.14 @nestjs/config@^4.0.3 @nestjs/core@^11.1.14 @nestjs/jwt@^11.0.2 @nestjs/platform-express@^11.1.14 @nestjs/swagger@^11.2.6 @nestjs/throttler@^6.5.0 class-transformer@^0.5.1 class-validator@^0.15.1 helmet@^8.1.0 reflect-metadata@^0.2.2 rxjs@^7.8.2 next@^16.1.6 react@^19.2.4 react-dom@^19.2.4)",
+      "Bash(yarn add --ignore-engines @nestjs/common@^11.1.14 @nestjs/config@^4.0.3 @nestjs/core@^11.1.14 @nestjs/jwt@^11.0.2 @nestjs/platform-express@^11.1.14 @nestjs/swagger@^11.2.6 @nestjs/throttler@^6.5.0 class-transformer@^0.5.1 class-validator@^0.15.1 helmet@^8.1.0 reflect-metadata@^0.2.2 rxjs@^7.8.2 next@^16.1.6 react@^19.2.4 react-dom@^19.2.4)",
+      "Bash(yarn add --dev --ignore-engines @types/react@^19.2.14 @types/react-dom@^19.2.3 @types/express@^5.0.6 tailwindcss@^4.2.1 @tailwindcss/postcss@^4.2.1 postcss@^8.5.6)",
+      "Bash(timeout 15 npx ts-node -r tsconfig-paths/register src/server/main.ts)",
+      "Bash(gtimeout 15 npx ts-node -r tsconfig-paths/register src/server/main.ts)",
+      "Bash(chmod +x /Users/marcusviniciusgirolnetosousa/Documents/repositories/protocol/metagraph-monitoring-service-package/scripts/setup.sh /Users/marcusviniciusgirolnetosousa/Documents/repositories/protocol/metagraph-monitoring-service-package/scripts/deploy.sh /Users/marcusviniciusgirolnetosousa/Documents/repositories/protocol/metagraph-monitoring-service-package/scripts/migrate.sh)",
+      "Bash(./scripts/setup.sh --config /tmp/test-setup.json)",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s \"https://l0-lb-mainnet.constellationnetwork.io/cluster/info\")",
+      "Bash(./scripts/migrate.sh /Users/marcusviniciusgirolnetosousa/Documents/repositories/protocol/metagraph-monitoring-service --auth admin:test123)",
+      "Bash(/tmp/test-setup.json:*)",
+      "Bash(docker compose config --quiet)",
+      "Bash(ls -la /Users/marcusviniciusgirolnetosousa/Documents/repositories/protocol/metagraph-monitoring-service-package/*.ts)",
+      "Bash(ls config/*.config.json)",
+      "Bash(/tmp/lean-test.config.json:*)",
+      "Bash(CONFIG_PATH=/tmp/lean-test.config.json timeout 10 npx ts-node -r tsconfig-paths/register src/server/main.ts)",
+      "Bash(npx ts-node -r tsconfig-paths/register -e \":*)",
+      "Bash(npx ts-node -r tsconfig-paths/register /tmp/test-defaults.ts)",
+      "Bash(npx eslint 'src/**/*.{ts,tsx}' --fix)",
+      "Bash(ssh -i dor-metagraph.pem ubuntu@44.245.219.20 \"ls /home/ubuntu/code/currency-1-testnet-monitoring-service/config/\")",
+      "Bash(ssh -i dor-metagraph.pem ubuntu@44.245.219.20 \"cat /home/ubuntu/code/currency-1-testnet-monitoring-service/config/config.json\")"
     ]
   }
 }

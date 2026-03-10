@@ -1,0 +1,647 @@
+#!/usr/bin/env bash
+# Interactive setup wizard for Metagraph Monitoring Service.
+# Also supports non-interactive mode via --config flag.
+#
+# Usage:
+#   ./scripts/setup.sh                              # Interactive wizard
+#   ./scripts/setup.sh --config setup-config.json   # Non-interactive
+#   ./scripts/setup.sh --config setup-config.json --start  # Non-interactive + start
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Colors
+BLUE='\033[1;34m'
+GREEN='\033[1;32m'
+RED='\033[1;31m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+log()  { echo -e "${BLUE}[setup]${NC} $*" >&2; }
+ok()   { echo -e "${GREEN}  ✓${NC} $*" >&2; }
+err()  { echo -e "${RED}  ✗${NC} $*" >&2; }
+warn() { echo -e "${YELLOW}  !${NC} $*" >&2; }
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Utilities
+# ══════════════════════════════════════════════════════════════════════════════
+
+check_dependencies() {
+  local missing=0
+  for cmd in curl jq; do
+    if ! command -v "$cmd" &>/dev/null; then
+      err "$cmd is required but not installed."
+      missing=1
+    fi
+  done
+  if [ "$missing" -eq 1 ]; then
+    err "Install missing dependencies and try again."
+    exit 1
+  fi
+}
+
+prompt() {
+  local var_name="$1" prompt_text="$2" default="${3:-}"
+  local value
+  if [ -n "$default" ]; then
+    read -rp "  $prompt_text [$default]: " value
+    value="${value:-$default}"
+  else
+    while true; do
+      read -rp "  $prompt_text: " value
+      [ -n "$value" ] && break
+      echo "  (required)"
+    done
+  fi
+  eval "$var_name=\"\$value\""
+}
+
+prompt_password() {
+  local var_name="$1" prompt_text="$2"
+  local value
+  while true; do
+    read -rsp "  $prompt_text: " value
+    echo ""
+    [ -n "$value" ] && break
+    echo "  (required)"
+  done
+  eval "$var_name=\"\$value\""
+}
+
+prompt_yn() {
+  local var_name="$1" prompt_text="$2" default="${3:-y}"
+  local value
+  read -rp "  $prompt_text (y/n) [$default]: " value
+  value="${value:-$default}"
+  if [[ "$value" =~ ^[Yy] ]]; then
+    eval "$var_name=true"
+  else
+    eval "$var_name=false"
+  fi
+}
+
+generate_jwt_secret() {
+  LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 64 2>/dev/null || \
+    openssl rand -hex 32 2>/dev/null || \
+    date +%s%N | sha256sum | head -c 64
+}
+
+fetch_l0_nodes() {
+  local network="$1"
+  local url="https://l0-lb-${network}.constellationnetwork.io/cluster/info"
+
+  log "Fetching Global L0 nodes from ${network}..."
+
+  local response
+  response=$(curl -sf --connect-timeout 10 "$url" 2>/dev/null) || {
+    warn "Could not reach $url"
+    echo "[]"
+    return 1
+  }
+
+  local nodes
+  nodes=$(echo "$response" | jq -c '[.[] | {ip: .ip, port: .publicPort, id: .id}] | .[0:3]' 2>/dev/null) || {
+    warn "Failed to parse L0 node response"
+    echo "[]"
+    return 1
+  }
+
+  local count
+  count=$(echo "$nodes" | jq 'length')
+  ok "Found $count L0 nodes"
+  echo "$nodes"
+}
+
+# Convert host SSH key path to container path
+host_to_container_path() {
+  local host_path="$1"
+  local filename
+  filename=$(basename "$host_path")
+  echo "/root/.ssh/$filename"
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Config generation
+# ══════════════════════════════════════════════════════════════════════════════
+
+generate_metagraph_config() {
+  local name="$1" id="$2" network="$3" nodes_json="$4" network_nodes_json="$5"
+  local ml0_ports="$6" cl1_enabled="$7" cl1_ports="$8" dl1_enabled="$9" dl1_ports="${10}"
+
+  local cl1_ignore="false"
+  local dl1_ignore="false"
+  [ "$cl1_enabled" = "false" ] && cl1_ignore="true"
+  [ "$dl1_enabled" = "false" ] && dl1_ignore="true"
+
+  # Build layers object - only include ignore_layer when true
+  local layers_json
+  layers_json=$(cat <<LAYERS
+{
+  "ml0": { "ports": $ml0_ports },
+  "cl1": { $([ "$cl1_ignore" = "true" ] && echo '"ignore_layer": true,' ) "ports": $cl1_ports },
+  "dl1": { $([ "$dl1_ignore" = "true" ] && echo '"ignore_layer": true,' ) "ports": $dl1_ports }
+}
+LAYERS
+)
+  # Clean up empty fields from conditional expansion
+  layers_json=$(echo "$layers_json" | jq '.')
+
+  cat <<EOF
+{
+  "metagraph": {
+    "id": "$id",
+    "name": "$name",
+    "layers": $layers_json,
+    "nodes": $nodes_json
+  },
+  "network": {
+    "name": "$network",
+    "nodes": $network_nodes_json
+  }
+}
+EOF
+}
+
+generate_env_file() {
+  local username="$1" password="$2" discord="$3" opsgenie="$4"
+  local jwt_secret
+  jwt_secret=$(generate_jwt_secret)
+
+  cat <<EOF
+# Authentication
+AUTH_USERNAME=$username
+AUTH_PASSWORD=$password
+JWT_SECRET=$jwt_secret
+
+# API
+API_PORT=3001
+CORS_ORIGIN=http://localhost:3000
+
+# Opsgenie (optional)
+OPSGENIE_API_KEY=$opsgenie
+
+# Discord (optional)
+DISCORD_WEBHOOK_URL=$discord
+EOF
+}
+
+generate_docker_compose() {
+  local metagraph_names=("$@")
+
+  cat <<'HEADER'
+# Auto-generated by setup.sh - do not edit manually.
+# Re-run ./scripts/setup.sh to modify.
+
+services:
+HEADER
+
+  local backends=""
+  local depends=""
+
+  for name in "${metagraph_names[@]}"; do
+    local service_name="monitor-${name}"
+
+    # Collect unique SSH key paths from this metagraph's config
+    local config_file="$PROJECT_DIR/config/${name}.config.json"
+    local ssh_volumes=""
+    if [ -f "$config_file" ]; then
+      local keys
+      keys=$(jq -r '.metagraph.nodes[].privateKeyPath' "$config_file" 2>/dev/null | sort -u)
+      while IFS= read -r container_path; do
+        [ -z "$container_path" ] && continue
+        local filename
+        filename=$(basename "$container_path")
+        # Look up the host path from our mapping file
+        local host_path
+        host_path=$(grep "^${name}:${container_path}=" "$PROJECT_DIR/.ssh-key-map" 2>/dev/null | head -1 | cut -d= -f2) || host_path=""
+        if [ -z "$host_path" ]; then
+          host_path="\${HOME}/.ssh/$filename"
+        fi
+        ssh_volumes="${ssh_volumes}      - ${host_path}:${container_path}:ro
+"
+      done <<< "$keys"
+    fi
+
+    cat <<EOF
+  ${service_name}:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - API_PORT=3001
+    volumes:
+      - ./config/${name}.config.json:/app/config/${name}.config.json:ro
+      - ./custom-conditions:/app/custom-conditions:ro
+      - ./logs/${name}:/app/logs
+${ssh_volumes}    restart: unless-stopped
+
+EOF
+
+    if [ -n "$backends" ]; then
+      backends="${backends},"
+      depends="${depends}, "
+    fi
+    backends="${backends}${name}=http://${service_name}:3001"
+    depends="${depends}${service_name}"
+  done
+
+  cat <<EOF
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    ports:
+      - '3001:3001'
+    env_file: .env
+    environment:
+      - GATEWAY_PORT=3001
+      - CORS_ORIGIN=http://localhost:3000
+      - METAGRAPH_BACKENDS=${backends}
+    depends_on:
+$(for name in "${metagraph_names[@]}"; do echo "      - monitor-${name}"; done)
+    restart: unless-stopped
+
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+    ports:
+      - '3000:3000'
+    environment:
+      - API_URL=http://gateway:3001
+    depends_on:
+      - gateway
+    restart: unless-stopped
+EOF
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Interactive mode
+# ══════════════════════════════════════════════════════════════════════════════
+
+run_interactive() {
+  echo ""
+  echo -e "${BOLD}═══════════════════════════════════════════════════${NC}"
+  echo -e "${BOLD}  Metagraph Monitoring Service - Setup Wizard${NC}"
+  echo -e "${BOLD}═══════════════════════════════════════════════════${NC}"
+  echo ""
+
+  # Check for existing config
+  local existing_configs
+  existing_configs=$(find "$PROJECT_DIR/config" -name "*.config.json" 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$existing_configs" -gt 0 ]; then
+    warn "Found $existing_configs existing metagraph config(s)."
+    prompt_yn ADD_MODE "Add a new metagraph to existing setup?" "y"
+    if [ "$ADD_MODE" = "false" ]; then
+      prompt_yn OVERWRITE "Overwrite all existing configuration?" "n"
+      if [ "$OVERWRITE" = "false" ]; then
+        log "Aborted."
+        exit 0
+      fi
+    fi
+  fi
+
+  # Dashboard credentials (skip if adding to existing)
+  local auth_username="admin" auth_password="" discord="" opsgenie=""
+  if [ "$existing_configs" -eq 0 ] || [ "${OVERWRITE:-false}" = "true" ]; then
+    echo -e "\n${CYAN}─── Dashboard Credentials ───${NC}"
+    prompt auth_username "Username" "admin"
+    prompt_password auth_password "Password"
+    echo ""
+
+    echo -e "\n${CYAN}─── Optional Integrations ───${NC}"
+    read -rp "  Discord webhook URL (press Enter to skip): " discord
+    read -rp "  Opsgenie API key (press Enter to skip): " opsgenie
+  fi
+
+  # Metagraph loop
+  local metagraph_names=()
+  local add_more="true"
+
+  while [ "$add_more" = "true" ]; do
+    local idx=$(( ${#metagraph_names[@]} + 1 ))
+    echo -e "\n${CYAN}─── Metagraph $idx ───${NC}"
+
+    local mg_name mg_id mg_network
+    prompt mg_name "Metagraph name (e.g. my-metagraph)"
+    prompt mg_id "Metagraph ID (DAG address)"
+    prompt mg_network "Network (mainnet / integrationnet / testnet)" "mainnet"
+
+    # Fetch L0 nodes
+    local network_nodes_json="[]"
+    network_nodes_json=$(fetch_l0_nodes "$mg_network") || {
+      warn "Could not auto-fetch L0 nodes. You can add them later in config/${mg_name}.config.json"
+      network_nodes_json="[]"
+    }
+
+    # Nodes
+    echo -e "\n  ${CYAN}── Nodes ──${NC}"
+    local node_count
+    prompt node_count "How many metagraph nodes?" "3"
+
+    local nodes_json="["
+    local prev_ssh_key="\$HOME/.ssh/id_rsa"
+
+    for (( i=1; i<=node_count; i++ )); do
+      local node_ip node_user node_ssh_key
+      echo ""
+      prompt node_ip "Node $i IP address"
+      prompt node_user "Node $i SSH username" "ubuntu"
+      prompt node_ssh_key "Node $i SSH private key path" "$prev_ssh_key"
+      prev_ssh_key="$node_ssh_key"
+
+      local container_path
+      container_path=$(host_to_container_path "$node_ssh_key")
+
+      # Save SSH key mapping
+      echo "${mg_name}:${container_path}=${node_ssh_key}" >> "$PROJECT_DIR/.ssh-key-map"
+
+      [ "$i" -gt 1 ] && nodes_json="${nodes_json},"
+      nodes_json="${nodes_json}{\"ip\":\"$node_ip\",\"username\":\"$node_user\",\"privateKeyPath\":\"$container_path\",\"key_file\":{\"name\":\"\",\"alias\":\"\",\"password\":\"\"}}"
+    done
+    nodes_json="${nodes_json}]"
+
+    # P12 key file (shared across all nodes)
+    echo -e "\n  ${CYAN}── P12 Key File (applied to all nodes) ──${NC}"
+    local p12_name p12_alias p12_password
+    prompt p12_name "P12 file name"
+    prompt p12_alias "P12 alias"
+    prompt_password p12_password "P12 password"
+
+    # Update nodes with P12 info
+    nodes_json=$(echo "$nodes_json" | jq --arg name "$p12_name" --arg alias "$p12_alias" --arg pass "$p12_password" \
+      '[.[] | .key_file = {"name": $name, "alias": $alias, "password": $pass}]')
+
+    # Layers
+    echo -e "\n  ${CYAN}── Layers ──${NC}"
+    local ml0_pub ml0_p2p ml0_cli
+    prompt ml0_pub "ML0 public port" "9200"
+    ml0_p2p=$((ml0_pub + 1))
+    ml0_cli=$((ml0_pub + 2))
+    local ml0_ports="{\"public\":$ml0_pub,\"p2p\":$ml0_p2p,\"cli\":$ml0_cli}"
+
+    local cl1_enabled cl1_pub cl1_p2p cl1_cli cl1_ports
+    prompt_yn cl1_enabled "Enable CL1 layer?" "y"
+    if [ "$cl1_enabled" = "true" ]; then
+      prompt cl1_pub "CL1 public port" "9300"
+      cl1_p2p=$((cl1_pub + 1))
+      cl1_cli=$((cl1_pub + 2))
+    else
+      cl1_pub=9300; cl1_p2p=9301; cl1_cli=9302
+    fi
+    cl1_ports="{\"public\":$cl1_pub,\"p2p\":$cl1_p2p,\"cli\":$cl1_cli}"
+
+    local dl1_enabled dl1_pub dl1_p2p dl1_cli dl1_ports
+    prompt_yn dl1_enabled "Enable DL1 layer?" "y"
+    if [ "$dl1_enabled" = "true" ]; then
+      prompt dl1_pub "DL1 public port" "9400"
+      dl1_p2p=$((dl1_pub + 1))
+      dl1_cli=$((dl1_pub + 2))
+    else
+      dl1_pub=9400; dl1_p2p=9401; dl1_cli=9402
+    fi
+    dl1_ports="{\"public\":$dl1_pub,\"p2p\":$dl1_p2p,\"cli\":$dl1_cli}"
+
+    # Generate config file
+    mkdir -p "$PROJECT_DIR/config"
+    local config_content
+    config_content=$(generate_metagraph_config \
+      "$mg_name" "$mg_id" "$mg_network" "$nodes_json" "$network_nodes_json" \
+      "$ml0_ports" "$cl1_enabled" "$cl1_ports" "$dl1_enabled" "$dl1_ports")
+
+    echo "$config_content" | jq '.' > "$PROJECT_DIR/config/${mg_name}.config.json"
+    ok "Generated config/${mg_name}.config.json"
+
+    metagraph_names+=("$mg_name")
+
+    echo ""
+    prompt_yn add_more "Add another metagraph?" "n"
+  done
+
+  # Generate .env (only if new setup or overwrite)
+  if [ "$existing_configs" -eq 0 ] || [ "${OVERWRITE:-false}" = "true" ]; then
+    generate_env_file "$auth_username" "$auth_password" "$discord" "$opsgenie" > "$PROJECT_DIR/.env"
+    ok "Generated .env"
+  fi
+
+  # Collect ALL metagraph names (existing + new)
+  local all_names=()
+  for f in "$PROJECT_DIR"/config/*.config.json; do
+    [ -f "$f" ] || continue
+    local n
+    n=$(basename "$f" .config.json)
+    all_names+=("$n")
+  done
+
+  # Generate docker-compose.yml
+  generate_docker_compose "${all_names[@]}" > "$PROJECT_DIR/docker-compose.yml"
+  ok "Generated docker-compose.yml"
+
+  # Create log directories
+  for name in "${all_names[@]}"; do
+    mkdir -p "$PROJECT_DIR/logs/$name"
+  done
+
+  # Summary
+  echo ""
+  echo -e "${BOLD}─── Summary ───${NC}"
+  for name in "${all_names[@]}"; do
+    local id network
+    id=$(jq -r '.metagraph.id' "$PROJECT_DIR/config/${name}.config.json")
+    network=$(jq -r '.network.name' "$PROJECT_DIR/config/${name}.config.json")
+    local node_count
+    node_count=$(jq '.metagraph.nodes | length' "$PROJECT_DIR/config/${name}.config.json")
+    echo -e "  Metagraph: ${BOLD}$name${NC} ($id)"
+    echo -e "  Network:   $network | Nodes: $node_count"
+  done
+  echo -e "  Dashboard: ${CYAN}http://localhost:3000${NC}"
+  echo ""
+
+  prompt_yn START_NOW "Start containers now?" "y"
+  if [ "$START_NOW" = "true" ]; then
+    "$SCRIPT_DIR/deploy.sh" --start
+  else
+    echo ""
+    log "To start later, run: ./scripts/deploy.sh --start"
+  fi
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Non-interactive mode
+# ══════════════════════════════════════════════════════════════════════════════
+
+run_non_interactive() {
+  local config_file="$1"
+  local auto_start="${2:-false}"
+
+  if [ ! -f "$config_file" ]; then
+    err "Config file not found: $config_file"
+    exit 1
+  fi
+
+  # Validate JSON
+  if ! jq empty "$config_file" 2>/dev/null; then
+    err "Invalid JSON in $config_file"
+    exit 1
+  fi
+
+  log "Running non-interactive setup from $config_file"
+
+  # Extract auth
+  local auth_username auth_password discord opsgenie
+  auth_username=$(jq -r '.auth.username // "admin"' "$config_file")
+  auth_password=$(jq -r '.auth.password // empty' "$config_file")
+  discord=$(jq -r '.discord_webhook_url // ""' "$config_file")
+  opsgenie=$(jq -r '.opsgenie_api_key // ""' "$config_file")
+
+  if [ -z "$auth_password" ]; then
+    err "auth.password is required in config file"
+    exit 1
+  fi
+
+  # Clear SSH key map
+  > "$PROJECT_DIR/.ssh-key-map"
+
+  # Process each metagraph
+  local metagraph_count
+  metagraph_count=$(jq '.metagraphs | length' "$config_file")
+  local metagraph_names=()
+
+  for (( i=0; i<metagraph_count; i++ )); do
+    local mg_name mg_id mg_network
+    mg_name=$(jq -r ".metagraphs[$i].name" "$config_file")
+    mg_id=$(jq -r ".metagraphs[$i].id" "$config_file")
+    mg_network=$(jq -r ".metagraphs[$i].network // \"mainnet\"" "$config_file")
+
+    log "Configuring metagraph: $mg_name ($mg_id)"
+
+    # Fetch L0 nodes
+    local network_nodes_json
+    network_nodes_json=$(fetch_l0_nodes "$mg_network") || network_nodes_json="[]"
+
+    # Build nodes JSON
+    local node_count
+    node_count=$(jq ".metagraphs[$i].nodes | length" "$config_file")
+    local nodes_json="["
+
+    for (( j=0; j<node_count; j++ )); do
+      local node_ip node_user node_ssh_key p12_name p12_alias p12_pass
+      node_ip=$(jq -r ".metagraphs[$i].nodes[$j].ip" "$config_file")
+      node_user=$(jq -r ".metagraphs[$i].nodes[$j].username // \"ubuntu\"" "$config_file")
+      node_ssh_key=$(jq -r ".metagraphs[$i].nodes[$j].ssh_key_path // \"~/.ssh/id_rsa\"" "$config_file")
+      p12_name=$(jq -r ".metagraphs[$i].nodes[$j].key_file.name // \"\"" "$config_file")
+      p12_alias=$(jq -r ".metagraphs[$i].nodes[$j].key_file.alias // \"\"" "$config_file")
+      p12_pass=$(jq -r ".metagraphs[$i].nodes[$j].key_file.password // \"\"" "$config_file")
+
+      local container_path
+      container_path=$(host_to_container_path "$node_ssh_key")
+
+      # Save SSH key mapping
+      echo "${mg_name}:${container_path}=${node_ssh_key}" >> "$PROJECT_DIR/.ssh-key-map"
+
+      [ "$j" -gt 0 ] && nodes_json="${nodes_json},"
+      nodes_json="${nodes_json}{\"ip\":\"$node_ip\",\"username\":\"$node_user\",\"privateKeyPath\":\"$container_path\",\"key_file\":{\"name\":\"$p12_name\",\"alias\":\"$p12_alias\",\"password\":\"$p12_pass\"}}"
+    done
+    nodes_json="${nodes_json}]"
+
+    # Layers
+    local ml0_ports cl1_enabled cl1_ports dl1_enabled dl1_ports
+    ml0_ports=$(jq -c ".metagraphs[$i].layers.ml0.ports // {\"public\":9200,\"p2p\":9201,\"cli\":9202}" "$config_file")
+    cl1_enabled=$(jq -r "if .metagraphs[$i].layers.cl1.enabled == false then \"false\" else \"true\" end" "$config_file")
+    cl1_ports=$(jq -c ".metagraphs[$i].layers.cl1.ports // {\"public\":9300,\"p2p\":9301,\"cli\":9302}" "$config_file")
+    dl1_enabled=$(jq -r "if .metagraphs[$i].layers.dl1.enabled == false then \"false\" else \"true\" end" "$config_file")
+    dl1_ports=$(jq -c ".metagraphs[$i].layers.dl1.ports // {\"public\":9400,\"p2p\":9401,\"cli\":9402}" "$config_file")
+
+    # Generate config
+    mkdir -p "$PROJECT_DIR/config"
+    local config_content
+    config_content=$(generate_metagraph_config \
+      "$mg_name" "$mg_id" "$mg_network" "$nodes_json" "$network_nodes_json" \
+      "$ml0_ports" "$cl1_enabled" "$cl1_ports" "$dl1_enabled" "$dl1_ports")
+
+    echo "$config_content" | jq '.' > "$PROJECT_DIR/config/${mg_name}.config.json"
+    ok "Generated config/${mg_name}.config.json"
+
+    metagraph_names+=("$mg_name")
+  done
+
+  # Generate .env
+  generate_env_file "$auth_username" "$auth_password" "$discord" "$opsgenie" > "$PROJECT_DIR/.env"
+  ok "Generated .env"
+
+  # Generate docker-compose.yml (include ALL existing configs, not just this run)
+  local all_names=()
+  for f in "$PROJECT_DIR"/config/*.config.json; do
+    [ -f "$f" ] || continue
+    all_names+=("$(basename "$f" .config.json)")
+  done
+  generate_docker_compose "${all_names[@]}" > "$PROJECT_DIR/docker-compose.yml"
+  ok "Generated docker-compose.yml"
+
+  # Create directories
+  for name in "${all_names[@]}"; do
+    mkdir -p "$PROJECT_DIR/logs/$name"
+  done
+  mkdir -p "$PROJECT_DIR/custom-conditions"
+
+  ok "Setup complete for ${#metagraph_names[@]} metagraph(s)"
+
+  if [ "$auto_start" = "true" ]; then
+    "$SCRIPT_DIR/deploy.sh" --start
+  else
+    log "To start: ./scripts/deploy.sh --start"
+  fi
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Main
+# ══════════════════════════════════════════════════════════════════════════════
+
+main() {
+  check_dependencies
+  mkdir -p "$PROJECT_DIR/config" "$PROJECT_DIR/custom-conditions"
+
+  # Clear SSH key map
+  > "$PROJECT_DIR/.ssh-key-map"
+
+  local config_file="" auto_start="false"
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --config)
+        config_file="$2"
+        shift 2
+        ;;
+      --start)
+        auto_start="true"
+        shift
+        ;;
+      -h|--help)
+        echo "Usage:"
+        echo "  ./scripts/setup.sh                              # Interactive wizard"
+        echo "  ./scripts/setup.sh --config setup-config.json   # Non-interactive"
+        echo "  ./scripts/setup.sh --config file.json --start   # Non-interactive + start Docker"
+        exit 0
+        ;;
+      *)
+        err "Unknown option: $1"
+        exit 1
+        ;;
+    esac
+  done
+
+  if [ -n "$config_file" ]; then
+    run_non_interactive "$config_file" "$auto_start"
+  else
+    run_interactive
+  fi
+}
+
+main "$@"

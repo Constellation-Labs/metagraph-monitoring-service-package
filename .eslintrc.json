@@ -1,34 +1,44 @@
 {
-    "parser": "@typescript-eslint/parser",
-    "extends": [
-      "eslint:recommended",
-      "plugin:@typescript-eslint/recommended",
-      "plugin:prettier/recommended",
-      "plugin:import/errors",
-      "plugin:import/warnings",
-      "plugin:import/typescript"
-    ],
-    "plugins": ["@typescript-eslint", "prettier", "import"],
-    "rules": {
-      "prettier/prettier": "error",
-      "import/order": [
-        "error",
-        {
-          "groups": ["builtin", "external", "internal", ["sibling", "parent"], "index"],
-          "newlines-between": "always",
-          "alphabetize": {
-            "order": "asc",
-            "caseInsensitive": true
-          }
+  "parser": "@typescript-eslint/parser",
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:prettier/recommended",
+    "plugin:import/errors",
+    "plugin:import/warnings",
+    "plugin:import/typescript"
+  ],
+  "plugins": ["@typescript-eslint", "prettier", "import"],
+  "rules": {
+    "prettier/prettier": "error",
+    "import/order": [
+      "error",
+      {
+        "groups": ["builtin", "external", "internal", ["sibling", "parent"], "index"],
+        "newlines-between": "always",
+        "alphabetize": {
+          "order": "asc",
+          "caseInsensitive": true
         }
-      ],
-      "import/newline-after-import": "error",
-      "import/no-duplicates": "error"
-    },
-    "settings": {
-      "import/resolver": {
-        "typescript": {} // This will read the TS config for paths and aliases
+      }
+    ],
+    "import/newline-after-import": "error",
+    "import/no-duplicates": "error",
+    "import/no-named-as-default-member": "off",
+    "@typescript-eslint/no-explicit-any": "warn",
+    "no-empty": ["error", { "allowEmptyCatch": true }]
+  },
+  "settings": {
+    "import/resolver": {
+      "typescript": {}
+    }
+  },
+  "overrides": [
+    {
+      "files": ["src/ui/**/*.{ts,tsx}"],
+      "rules": {
+        "import/no-unresolved": "off"
       }
     }
-  }
-  
+  ]
+}

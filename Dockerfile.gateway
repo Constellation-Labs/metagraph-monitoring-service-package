@@ -1,0 +1,19 @@
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+COPY package.json yarn.lock* ./
+RUN yarn install --frozen-lockfile --ignore-engines 2>/dev/null || yarn install --ignore-engines
+
+COPY src/gateway ./src/gateway
+RUN npx tsc src/gateway/index.ts --outDir dist/gateway --esModuleInterop --module commonjs --target es2020 --skipLibCheck
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY --from=builder /app/dist/gateway/index.js ./dist/gateway/index.js
+
+EXPOSE 3001
+
+CMD ["node", "dist/gateway/index.js"]
