@@ -3,13 +3,16 @@
     "username": "admin",
     "password": "your-secure-password"
   },
-  "discord_webhook_url": "",
-  "opsgenie_api_key": "",
   "metagraphs": [
     {
       "name": "my-metagraph",
       "id": "DAG4dWrdALPQmvF5UBpuXrqdkMHea1H5f7rjb4qZ",
       "network": "mainnet",
+      "discord_webhook_url": "",
+      "opsgenie_api_key": "",
+      "aws_access_key_id": "",
+      "aws_secret_access_key": "",
+      "aws_region": "us-west-1",
       "nodes": [
         {
           "ip": "10.0.0.1",

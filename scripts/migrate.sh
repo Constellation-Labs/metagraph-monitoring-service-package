@@ -281,8 +281,10 @@ main() {
 
   # ── Step 7: Dashboard credentials + .env ─────────────────────────────────
 
-  if [ -f "$PROJECT_DIR/.env" ]; then
-    ok "Preserving existing .env (use --auth to override credentials)"
+  mkdir -p "$PROJECT_DIR/envs"
+
+  if [ -f "$PROJECT_DIR/envs/.env.shared" ]; then
+    ok "Preserving existing envs/.env.shared (use --auth to override credentials)"
   else
     if [ -z "$auth_username" ]; then
       echo ""
@@ -297,19 +299,11 @@ main() {
       done
     fi
 
-    # Optional integrations
-    local discord="" opsgenie=""
-    if [ -z "$auth_arg" ]; then
-      echo -e "\n${CYAN}─── Optional Integrations ───${NC}"
-      read -rp "  Discord webhook URL (press Enter to skip): " discord
-      read -rp "  Opsgenie API key (press Enter to skip): " opsgenie
-    fi
-
     local jwt_secret
     jwt_secret=$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 64 2>/dev/null || openssl rand -hex 32)
 
-    cat > "$PROJECT_DIR/.env" <<EOF
-# Authentication
+    cat > "$PROJECT_DIR/envs/.env.shared" <<EOF
+# Authentication (shared across all monitor containers)
 AUTH_USERNAME=$auth_username
 AUTH_PASSWORD=$auth_password
 JWT_SECRET=$jwt_secret
@@ -317,14 +311,42 @@ JWT_SECRET=$jwt_secret
 # API
 API_PORT=3001
 CORS_ORIGIN=http://localhost:3000
+EOF
+    ok "Generated envs/.env.shared"
+  fi
 
+  # ── Step 8: Per-metagraph env file ─────────────────────────────────────
+
+  if [ -f "$PROJECT_DIR/envs/.env.${mg_slug}" ]; then
+    ok "Preserving existing envs/.env.${mg_slug}"
+  else
+    local mg_discord="" mg_opsgenie="" mg_aws_key="" mg_aws_secret="" mg_aws_region=""
+    if [ -z "$auth_arg" ]; then
+      echo -e "\n${CYAN}─── Integrations for $mg_name ───${NC}"
+      read -rp "  Discord webhook URL (press Enter to skip): " mg_discord
+      read -rp "  Opsgenie API key (press Enter to skip): " mg_opsgenie
+      read -rp "  AWS Access Key ID (press Enter to skip): " mg_aws_key
+      if [ -n "$mg_aws_key" ]; then
+        read -rp "  AWS Secret Access Key: " mg_aws_secret
+        read -rp "  AWS Region [us-west-1]: " mg_aws_region
+        mg_aws_region="${mg_aws_region:-us-west-1}"
+      fi
+    fi
+
+    cat > "$PROJECT_DIR/envs/.env.${mg_slug}" <<EOF
+# Metagraph-specific environment variables
 # Opsgenie (optional)
-OPSGENIE_API_KEY=$opsgenie
+OPSGENIE_API_KEY=$mg_opsgenie
 
 # Discord (optional)
-DISCORD_WEBHOOK_URL=$discord
+DISCORD_WEBHOOK_URL=$mg_discord
+
+# AWS (optional - for instance reboot)
+AWS_ACCESS_KEY_ID=$mg_aws_key
+AWS_SECRET_ACCESS_KEY=$mg_aws_secret
+AWS_REGION=${mg_aws_region:-us-west-1}
 EOF
-    ok "Generated .env"
+    ok "Generated envs/.env.${mg_slug}"
   fi
 
   # ── Step 9: Generate docker-compose.yml ──────────────────────────────────
@@ -371,7 +393,8 @@ EOF
       context: .
       dockerfile: Dockerfile
     env_file:
-      - .env
+      - ./envs/.env.shared
+      - ./envs/.env.${name}
     environment:
       - NODE_ENV=production
       - API_PORT=3001
@@ -396,7 +419,7 @@ SVCEOF
       dockerfile: Dockerfile.gateway
     ports:
       - '3001:3001'
-    env_file: .env
+    env_file: ./envs/.env.shared
     environment:
       - GATEWAY_PORT=3001
       - CORS_ORIGIN=http://localhost:3000
@@ -439,7 +462,8 @@ GWEOF
   echo ""
   echo "  Generated files:"
   echo "    config/${mg_slug}.config.json"
-  echo "    .env"
+  echo "    envs/.env.shared"
+  echo "    envs/.env.${mg_slug}"
   echo "    docker-compose.yml"
   [ "$migrated_conditions" -gt 0 ] && echo "    custom-conditions/*.ts"
   echo ""

@@ -167,12 +167,12 @@ EOF
 }
 
 generate_env_file() {
-  local username="$1" password="$2" discord="$3" opsgenie="$4"
+  local username="$1" password="$2"
   local jwt_secret
   jwt_secret=$(generate_jwt_secret)
 
   cat <<EOF
-# Authentication
+# Authentication (shared across all monitor containers)
 AUTH_USERNAME=$username
 AUTH_PASSWORD=$password
 JWT_SECRET=$jwt_secret
@@ -180,12 +180,25 @@ JWT_SECRET=$jwt_secret
 # API
 API_PORT=3001
 CORS_ORIGIN=http://localhost:3000
+EOF
+}
 
+generate_metagraph_env_file() {
+  local opsgenie="${1:-}" discord="${2:-}"
+  local aws_key="${3:-}" aws_secret="${4:-}" aws_region="${5:-us-west-1}"
+
+  cat <<EOF
+# Metagraph-specific environment variables
 # Opsgenie (optional)
 OPSGENIE_API_KEY=$opsgenie
 
 # Discord (optional)
 DISCORD_WEBHOOK_URL=$discord
+
+# AWS (optional - for instance reboot)
+AWS_ACCESS_KEY_ID=$aws_key
+AWS_SECRET_ACCESS_KEY=$aws_secret
+AWS_REGION=$aws_region
 EOF
 }
 
@@ -232,7 +245,8 @@ HEADER
       context: .
       dockerfile: Dockerfile
     env_file:
-      - .env
+      - ./envs/.env.shared
+      - ./envs/.env.${name}
     environment:
       - NODE_ENV=production
       - API_PORT=3001
@@ -259,7 +273,7 @@ EOF
       dockerfile: Dockerfile.gateway
     ports:
       - '3001:3001'
-    env_file: .env
+    env_file: ./envs/.env.shared
     environment:
       - GATEWAY_PORT=3001
       - CORS_ORIGIN=http://localhost:3000
@@ -309,16 +323,12 @@ run_interactive() {
   fi
 
   # Dashboard credentials (skip if adding to existing)
-  local auth_username="admin" auth_password="" discord="" opsgenie=""
+  local auth_username="admin" auth_password=""
   if [ "$existing_configs" -eq 0 ] || [ "${OVERWRITE:-false}" = "true" ]; then
     echo -e "\n${CYAN}─── Dashboard Credentials ───${NC}"
     prompt auth_username "Username" "admin"
     prompt_password auth_password "Password"
     echo ""
-
-    echo -e "\n${CYAN}─── Optional Integrations ───${NC}"
-    read -rp "  Discord webhook URL (press Enter to skip): " discord
-    read -rp "  Opsgenie API key (press Enter to skip): " opsgenie
   fi
 
   # Metagraph loop
@@ -419,16 +429,31 @@ run_interactive() {
     echo "$config_content" | jq '.' > "$PROJECT_DIR/config/${mg_name}.config.json"
     ok "Generated config/${mg_name}.config.json"
 
+    # Per-metagraph integrations
+    echo -e "\n  ${CYAN}── Integrations for $mg_name ──${NC}"
+    local mg_discord="" mg_opsgenie="" mg_aws_key="" mg_aws_secret="" mg_aws_region=""
+    read -rp "  Discord webhook URL (press Enter to skip): " mg_discord
+    read -rp "  Opsgenie API key (press Enter to skip): " mg_opsgenie
+    read -rp "  AWS Access Key ID (press Enter to skip): " mg_aws_key
+    if [ -n "$mg_aws_key" ]; then
+      read -rp "  AWS Secret Access Key: " mg_aws_secret
+      read -rp "  AWS Region [us-west-1]: " mg_aws_region
+      mg_aws_region="${mg_aws_region:-us-west-1}"
+    fi
+
+    generate_metagraph_env_file "$mg_opsgenie" "$mg_discord" "$mg_aws_key" "$mg_aws_secret" "$mg_aws_region" > "$PROJECT_DIR/envs/.env.${mg_name}"
+    ok "Generated envs/.env.${mg_name}"
+
     metagraph_names+=("$mg_name")
 
     echo ""
     prompt_yn add_more "Add another metagraph?" "n"
   done
 
-  # Generate .env (only if new setup or overwrite)
+  # Generate shared .env (only if new setup or overwrite)
   if [ "$existing_configs" -eq 0 ] || [ "${OVERWRITE:-false}" = "true" ]; then
-    generate_env_file "$auth_username" "$auth_password" "$discord" "$opsgenie" > "$PROJECT_DIR/.env"
-    ok "Generated .env"
+    generate_env_file "$auth_username" "$auth_password" > "$PROJECT_DIR/envs/.env.shared"
+    ok "Generated envs/.env.shared"
   fi
 
   # Collect ALL metagraph names (existing + new)
@@ -495,11 +520,9 @@ run_non_interactive() {
   log "Running non-interactive setup from $config_file"
 
   # Extract auth
-  local auth_username auth_password discord opsgenie
+  local auth_username auth_password
   auth_username=$(jq -r '.auth.username // "admin"' "$config_file")
   auth_password=$(jq -r '.auth.password // empty' "$config_file")
-  discord=$(jq -r '.discord_webhook_url // ""' "$config_file")
-  opsgenie=$(jq -r '.opsgenie_api_key // ""' "$config_file")
 
   if [ -z "$auth_password" ]; then
     err "auth.password is required in config file"
@@ -569,12 +592,23 @@ run_non_interactive() {
     echo "$config_content" | jq '.' > "$PROJECT_DIR/config/${mg_name}.config.json"
     ok "Generated config/${mg_name}.config.json"
 
+    # Per-metagraph env
+    local mg_opsgenie mg_discord mg_aws_key mg_aws_secret mg_aws_region
+    mg_opsgenie=$(jq -r ".metagraphs[$i].opsgenie_api_key // \"\"" "$config_file")
+    mg_discord=$(jq -r ".metagraphs[$i].discord_webhook_url // \"\"" "$config_file")
+    mg_aws_key=$(jq -r ".metagraphs[$i].aws_access_key_id // \"\"" "$config_file")
+    mg_aws_secret=$(jq -r ".metagraphs[$i].aws_secret_access_key // \"\"" "$config_file")
+    mg_aws_region=$(jq -r ".metagraphs[$i].aws_region // \"us-west-1\"" "$config_file")
+
+    generate_metagraph_env_file "$mg_opsgenie" "$mg_discord" "$mg_aws_key" "$mg_aws_secret" "$mg_aws_region" > "$PROJECT_DIR/envs/.env.${mg_name}"
+    ok "Generated envs/.env.${mg_name}"
+
     metagraph_names+=("$mg_name")
   done
 
-  # Generate .env
-  generate_env_file "$auth_username" "$auth_password" "$discord" "$opsgenie" > "$PROJECT_DIR/.env"
-  ok "Generated .env"
+  # Generate shared .env
+  generate_env_file "$auth_username" "$auth_password" > "$PROJECT_DIR/envs/.env.shared"
+  ok "Generated envs/.env.shared"
 
   # Generate docker-compose.yml (include ALL existing configs, not just this run)
   local all_names=()
@@ -606,7 +640,7 @@ run_non_interactive() {
 
 main() {
   check_dependencies
-  mkdir -p "$PROJECT_DIR/config" "$PROJECT_DIR/custom-conditions"
+  mkdir -p "$PROJECT_DIR/config" "$PROJECT_DIR/envs" "$PROJECT_DIR/custom-conditions"
 
   # Clear SSH key map
   > "$PROJECT_DIR/.ssh-key-map"

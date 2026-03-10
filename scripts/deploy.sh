@@ -106,8 +106,8 @@ ensure_project_structure() {
 # 5. Validate configuration
 # --------------------------------------------------------------------------
 validate_config() {
-  if [ ! -f "$PROJECT_DIR/.env" ]; then
-    err "No .env file found. Run ./scripts/setup.sh first."
+  if [ ! -f "$PROJECT_DIR/envs/.env.shared" ]; then
+    err "No envs/.env.shared file found. Run ./scripts/setup.sh first."
     exit 1
   fi
 

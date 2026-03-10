@@ -3,6 +3,9 @@ dist/
 logs/
 config/*.config.json
 config/*.pem
+envs/*
+!envs/.env.shared.example
+!envs/.env.metagraph.example
 output.log
 pidfile.txt
 .DS_Store
