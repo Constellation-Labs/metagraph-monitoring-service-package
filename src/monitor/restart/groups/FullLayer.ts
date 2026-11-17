@@ -70,7 +70,11 @@ export class FullLayer {
         `[${this.layer}] Saving logs on ${sshService.metagraphNode.ip}`,
       );
 
-      await saveCurrentLogs(sshService, this.layer);
+      await saveCurrentLogs(
+        sshService,
+        this.layer,
+        this.config.restart_logs_retention_days,
+      );
 
       this.logger.info(
         `[${this.layer}] Saved logs on ${sshService.metagraphNode.ip}`,

@@ -54,6 +54,7 @@ To run this service, you must provide the necessary configuration in the file: `
 *   **`check_healthy_interval_in_minutes`**: The interval, in minutes, at which the health check should run.
 *   **`min_disk_space_percent`**: The minimum disk space percentage required for the node to avoid triggering disk space alerts.
 *   **`min_owner_wallet_balance`**: The minimum wallet balance for the metagraph owner to avoid triggering low balance alerts.
+*   **`restart_logs_retention_days`**: Days to keep the log copies saved in `restart_logs/` on each restart. Defaults to 30. After each move, older copies are deleted and the new copy's `.log` files are gzipped. Set to `0` to keep everything.
 
 ## Interfaces
 

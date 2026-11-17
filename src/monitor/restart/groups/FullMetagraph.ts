@@ -90,13 +90,25 @@ export class FullMetagraph {
     const moveLogs = async (sshService: ISshService) => {
       this.logger.info(`Saving logs on ${sshService.metagraphNode.ip}`);
 
-      await saveCurrentLogs(sshService, Layers.ML0);
+      await saveCurrentLogs(
+        sshService,
+        Layers.ML0,
+        this.config.restart_logs_retention_days,
+      );
 
       !this.config.metagraph.layers.cl1.ignore_layer &&
-        (await saveCurrentLogs(sshService, Layers.CL1));
+        (await saveCurrentLogs(
+          sshService,
+          Layers.CL1,
+          this.config.restart_logs_retention_days,
+        ));
 
       !this.config.metagraph.layers.dl1.ignore_layer &&
-        (await saveCurrentLogs(sshService, Layers.DL1));
+        (await saveCurrentLogs(
+          sshService,
+          Layers.DL1,
+          this.config.restart_logs_retention_days,
+        ));
 
       this.logger.info(`Saved logs on ${sshService.metagraphNode.ip}`);
     };

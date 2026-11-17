@@ -81,6 +81,7 @@ export type Config = {
   network: NetworkProps;
   check_healthy_interval_in_minutes: number;
   min_disk_space_percent?: number;
+  restart_logs_retention_days?: number;
   min_owner_wallet_balance?: number;
 };
 
