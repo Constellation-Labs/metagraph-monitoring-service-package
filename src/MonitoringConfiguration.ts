@@ -82,6 +82,7 @@ export type Config = {
   check_healthy_interval_in_minutes: number;
   min_disk_space_percent?: number;
   min_owner_wallet_balance?: number;
+  max_individual_fork_restarts?: number;
 };
 
 export class MonitoringConfiguration {
