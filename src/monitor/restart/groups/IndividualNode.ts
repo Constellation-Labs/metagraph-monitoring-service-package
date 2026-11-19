@@ -66,7 +66,11 @@ export class IndividualNode {
       `[${this.layer}] Saving logs on ${this.sshService.metagraphNode.ip}`,
     );
 
-    await saveCurrentLogs(this.sshService, this.layer);
+    await saveCurrentLogs(
+      this.sshService,
+      this.layer,
+      this.config.restart_logs_retention_days,
+    );
 
     this.logger.info(
       `[${this.layer}] Saved logs on ${this.sshService.metagraphNode.ip}`,
