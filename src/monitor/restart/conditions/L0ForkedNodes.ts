@@ -6,7 +6,10 @@ import { Layers } from '@shared/constants';
 import { MonitoringConfiguration } from 'src/MonitoringConfiguration';
 
 import { Logger } from '../../../utils/logger';
+import { FullMetagraph } from '../groups/FullMetagraph';
 import { restartLayerNodes } from '../utils/restart-layer-nodes';
+
+export const DEFAULT_MAX_INDIVIDUAL_FORK_RESTARTS = 3;
 
 export default class L0ForkedNodes implements IRestartCondition {
   private monitoringConfiguration: MonitoringConfiguration;
@@ -15,6 +18,11 @@ export default class L0ForkedNodes implements IRestartCondition {
   name = 'L0 Forked Nodes';
 
   private metagraphL0ForkedNodes: ISshService[] = [];
+  private escalateToFullMetagraph = false;
+
+  // Consecutive checks each node has been found forked. The condition object
+  // lives for the whole monitor process, so this survives between checks.
+  private consecutiveForks = new Map<string, number>();
 
   constructor(monitoringConfiguration: MonitoringConfiguration) {
     this.monitoringConfiguration = monitoringConfiguration;
@@ -27,6 +35,7 @@ export default class L0ForkedNodes implements IRestartCondition {
   async shouldRestart(): Promise<ShouldRestartInfo> {
     this.logger.info('Checking for forked ML0 nodes');
     this.metagraphL0ForkedNodes = [];
+    this.escalateToFullMetagraph = false;
     const metagraphNodes = this.monitoringConfiguration.sshServices.map(
       (it) => it.metagraphNode,
     );
@@ -38,6 +47,7 @@ export default class L0ForkedNodes implements IRestartCondition {
       );
 
     if (forkedNodes.length === 0) {
+      this.consecutiveForks.clear();
       return {
         shouldRestart: false,
         restartType: '',
@@ -51,6 +61,30 @@ export default class L0ForkedNodes implements IRestartCondition {
         forkedNodesIps.includes(it.metagraphNode.ip),
       );
 
+    const counts = new Map<string, number>();
+    for (const ip of forkedNodesIps) {
+      counts.set(ip, (this.consecutiveForks.get(ip) ?? 0) + 1);
+    }
+    this.consecutiveForks = counts;
+
+    const maxRestarts =
+      this.monitoringConfiguration.config.max_individual_fork_restarts ??
+      DEFAULT_MAX_INDIVIDUAL_FORK_RESTARTS;
+    const stuck = [...counts.entries()].filter(
+      ([, count]) => maxRestarts > 0 && count > maxRestarts,
+    );
+    if (stuck.length > 0) {
+      this.escalateToFullMetagraph = true;
+      const stuckIps = stuck.map(([ip]) => ip).join(', ');
+      this.logger.warn(
+        `[ml0] Node(s) [${stuckIps}] still forked after ${maxRestarts} individual restarts, escalating to full metagraph restart`,
+      );
+      return {
+        shouldRestart: true,
+        restartType: `Full metagraph: ML0 still forked after ${maxRestarts} individual restarts: [${stuckIps}]`,
+      };
+    }
+
     const forkedIps = this.metagraphL0ForkedNodes
       .map((it) => it.metagraphNode.ip)
       .join(', ');
@@ -62,6 +96,16 @@ export default class L0ForkedNodes implements IRestartCondition {
   }
 
   async triggerRestart(): Promise<void> {
+    if (this.escalateToFullMetagraph) {
+      this.escalateToFullMetagraph = false;
+      this.consecutiveForks.clear();
+      await new FullMetagraph(
+        this.monitoringConfiguration,
+        this.monitoringConfiguration.globalNetworkService.referenceSourceNode,
+      ).performRestart();
+      return;
+    }
+
     if (this.metagraphL0ForkedNodes.length > 0) {
       await restartLayerNodes(
         this.monitoringConfiguration,
